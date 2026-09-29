@@ -1,0 +1,4 @@
+.terraform/
+.terraform.lock.hcl
+function/node_modules/
+function/dist/
