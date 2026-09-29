@@ -1,0 +1,53 @@
+# Derived caches (caches/) and, until the Drive mount exists, the sample data tree
+# (sample-data/). New buckets block public access by default.
+resource "aws_s3_bucket" "portal" {
+  bucket_prefix = "${local.name}-"
+}
+
+# Mirrors of the ai-cryoet images, plus the portal nginx image built from ./nginx.
+# scripts/push-images.sh fills them.
+resource "aws_ecr_repository" "images" {
+  for_each = toset(["nginx", "api", "frontend", "scanner"])
+  name     = "${local.name}/${each.key}"
+}
+
+# URL-safe (no special characters): the password is embedded in CATALOG_DB_URL.
+resource "random_password" "db" {
+  length  = 32
+  special = false
+}
+
+resource "aws_db_subnet_group" "catalog" {
+  name       = local.name
+  subnet_ids = aws_subnet.private[*].id
+}
+
+resource "aws_db_instance" "catalog" {
+  identifier                = local.name
+  engine                    = "postgres"
+  engine_version            = "16"
+  instance_class            = var.db_instance_class
+  allocated_storage         = 20
+  storage_type              = "gp3"
+  storage_encrypted         = true
+  db_name                   = "catalog"
+  username                  = "catalog"
+  password                  = random_password.db.result
+  db_subnet_group_name      = aws_db_subnet_group.catalog.name
+  vpc_security_group_ids    = [aws_security_group.db.id]
+  publicly_accessible       = false
+  backup_retention_period   = 7
+  deletion_protection       = terraform.workspace == "prod"
+  skip_final_snapshot       = terraform.workspace != "prod"
+  final_snapshot_identifier = "${local.name}-final"
+}
+
+# The whole connection URL, which the api and scanner read as CATALOG_DB_URL.
+resource "aws_secretsmanager_secret" "db_url" {
+  name_prefix = "${local.name}/catalog-db-url-"
+}
+
+resource "aws_secretsmanager_secret_version" "db_url" {
+  secret_id     = aws_secretsmanager_secret.db_url.id
+  secret_string = "postgresql+psycopg://catalog:${random_password.db.result}@${aws_db_instance.catalog.address}:5432/catalog"
+}
