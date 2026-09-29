@@ -20,9 +20,11 @@ This spec covers two deliverables, both owned by this repo's author:
 1. **Deploy the data portal on AWS.** Terraform under `infra/`, including a
    reusable `edge_auth` module that enforces Cognito sign-in and group
    membership at CloudFront.
-2. **PR to `rna_atlas_inference`** extending the existing Cognito setup so the
-   portal can use it: a portal app client, site groups, deletion protection,
-   remote state, and a one-line cookie change in the shared login page.
+2. **PRs to `rna_atlas_inference` and `rnanix_server_frontend`** extending the
+   existing Cognito setup so the portal can use it: a portal app client, site
+   groups, and deletion protection in the pool; an ID-token cookie and
+   `?next=` support in the shared `auth.js`; and, before real portal users are
+   invited, per-site invite emails.
 
 The `edge_auth` module is written so the `rna-atlas.org` site can adopt it
 later in place of its passcode gate. That adoption is **not** in scope here. It
@@ -80,8 +82,8 @@ Documented for context only; not modified by this spec.
 |---|---|---|
 | Orchestration | ECS on EC2 (Auto Scaling Group of 1, ECS-optimized AMI) | Existing containers read data and caches from a filesystem. EC2 permits FUSE mounts (`rclone mount`, Mountpoint for S3). Fargate does not, forcing EFS (~$0.30/GB/mo) or code changes. |
 | IaC | Terraform, plain HCL | Cognito pool is Terraform. Consistency with collaborators. |
-| Identity | Reuse the existing RNAnix pool. Add: portal app client, two groups, `deletion_protection`, remote state. | Shared invite list, one admin flow, no second pool to keep in sync. |
-| Login UX | Reuse RNAnix `login.html` + `auth.js`, `USER_PASSWORD_AUTH` | Already built, matches invite email, no Hosted UI or Cognito domain. One change: also write the ID token to a cookie. |
+| Identity | Reuse the existing RNAnix pool. Add: portal app client, two groups, `deletion_protection`. | Shared invite list, one admin flow, no second pool to keep in sync. |
+| Login UX | Portal's own `login.html` with portal branding, on top of an unmodified copy of RNAnix's `auth.js`, `USER_PASSWORD_AUTH` | `auth.js` holds all the Cognito logic with no branding or dependencies. RNAnix's `login.html` is RNAnix-branded and loads RNAnix's `style.css` and `app.js`, so the portal doesn't copy it. No Hosted UI or Cognito domain. |
 | Enforcement | Lambda@Edge on CloudFront viewer-request: verify ID-token cookie with `aws-jwt-verify`, check `cognito:groups` | Works for any origin (ALB here, S3 for a static site). CloudFront Functions cannot verify RS256 JWTs. |
 | Site scoping | Cognito groups `data-portal` and `rna-atlas`, checked at the edge | Runs on every request. A Pre-Authentication trigger is not a reliable gate because sign-in state is shared across app clients. |
 | Drive access | Service account (in a Janelia Google Cloud project) + `rclone mount`, read-only | API keys reach only public files. rclone implements the Drive API. Mount is on-demand fetch, not a copy. |
@@ -146,8 +148,9 @@ data prefixes and accept more than one app client.
 
 ### Portal stack (`infra/portal`)
 
-- Inputs from the auth state: `user_pool_id`, `issuer`, `data_portal_client_id`.
-  Read via `terraform_remote_state` once the auth state is in S3; tfvars until then.
+- Inputs from the auth state: `user_pool_id`, `issuer`, `data_portal_client_id`,
+  as tfvars. The auth stack keeps local state by design (the repo stays
+  applicable into any AWS account), so `terraform_remote_state` isn't available.
 - VPC: two public subnets (ALB), two private subnets (EC2, RDS). For the POC,
   place the instance in a public subnet with no inbound rules to avoid NAT cost.
 - ECS cluster on EC2: launch template with ECS-optimized AMI, ASG min 1 max 1,
@@ -177,8 +180,8 @@ data prefixes and accept more than one app client.
 
 1. `deploy/nginx.conf` (AWS copy): upstreams become `127.0.0.1:8000` and
    `127.0.0.1:3000`. Add `location = /login.html` and `/auth.js` served from a
-   static dir baked into the nginx image (copies of the RNAnix files with the
-   portal client id). Add the `/mrc-ng-server/` location when that service ships.
+   static dir baked into the nginx image: the portal's own `login.html` and an
+   unmodified copy of `auth.js`, with the portal client id set in the page. Add the `/mrc-ng-server/` location when that service ships.
 2. Scanner, API, frontend images: no change. rclone runs on the host.
 3. Janelia-specific frontend settings (`VITE_FILEGLANCER_URL`, `/api/viewer/`
    proxy) stay for the POC; removed with the RNA schema revision.
@@ -209,24 +212,54 @@ All changes are additive and in-place. No pool replacement.
   12 h tokens). Output `data_portal_client_id`.
 - `deletion_protection = "ACTIVE"` on the pool and
   `lifecycle { prevent_destroy = true }`.
-- Move state from `backend "local"` to S3 (`terraform init -migrate-state`) so
-  the portal state can read outputs via `terraform_remote_state`. If the owner
-  prefers to defer this, the portal takes the values as tfvars.
+- State stays `backend "local"`. The owner keeps it local on purpose so the
+  repo stays applicable into any AWS account (`terraform/main.tf`). The portal
+  takes the auth outputs as tfvars.
+- Branch from `v2-chat-copilot` (open PR #7), where `terraform/auth` lives. It
+  isn't on `master` yet.
 - README: add the portal to the list of consuming sites and document the groups.
 - A plan that shows `forces replacement` on the pool must not be applied.
 
 ### `rnanix_server_frontend/auth.js`
 
-After a successful sign-in or refresh, in addition to current storage, set:
+Separate PR, from a fork (no push access upstream). Merging to `main` deploys
+RNAnix through GitHub Pages. Changes to `auth.js` only; `login.html` is
+unchanged.
 
-```
-document.cookie = `id_token=${idToken}; Path=/; Secure; SameSite=Lax; Max-Age=43200`
-```
+- After a successful sign-in or refresh, in addition to current storage, set
+  `id_token=<token>; Path=/; Secure; SameSite=Lax; Max-Age=<token lifetime>`.
+  `Max-Age` comes from the auth result's `ExpiresIn`, so the cookie never
+  outlives its token. Clear it on logout.
+- `nextUrl()`: the `?next=` path to return to after sign-in, or `index.html`.
+  Only same-origin targets, so a crafted login link can't open-redirect.
+- `resumeSession()`: when `?next=` is present and the refresh token is still
+  valid, refresh silently and redirect to `nextUrl()`. A login page calls it on
+  load. The cookie expires with the 12 h ID token, and the refresh token lasts
+  30 days, so without this portal users would retype their password twice a day.
 
-Clear it on logout. Honor a `?next=` query parameter to return the user to the
-page that redirected them. No other behavior changes; RNAnix's existing
-localStorage-based API calls keep working. Because the cookie is host-scoped,
-the portal serves its own copy of `login.html` + `auth.js` on its own domain.
+RNAnix doesn't call the new functions. Its only behavior change is the extra
+cookie. Because the cookie is host-scoped, the portal serves its own login page
+and copy of `auth.js` on its own domain.
+
+### Per-site invite emails (`rna_atlas_inference`, follow-up PR)
+
+Cognito's built-in invite template has one static link, which points at
+RNAnix. Portal invitees must not land on RNAnix's page, so before inviting real
+portal users:
+
+- A Custom Message Lambda trigger rewrites the subject, body, and login link
+  per site from a map (`site` to name, login URL, subject). With no site, it
+  falls back to today's RNAnix email. The message keeps Cognito's `{username}`
+  and `{####}` placeholders.
+- Invites: `AdminCreateUser` passes `ClientMetadata` to the trigger.
+  `invite_user.sh <email> [site]` sets `{"site": "<site>"}`, including on the
+  `RESEND` path, and adds the user to that site's group.
+- Forgot-password emails: the trigger receives the calling app client id, and
+  maps it to a site.
+- Terraform: the Lambda and its role, `lambda_config { custom_message }` on the
+  pool (in-place), and an `aws_lambda_permission` for Cognito.
+- A user who already exists and gains access to another site gets only the
+  group. Their password works on every site. No new invite.
 
 ## Handoff: rna-atlas.org (not in scope, for the site owner)
 
@@ -237,7 +270,10 @@ The pieces above make this a small change when the owner wants it:
   the passcode CloudFront Function. Either import the distribution into
   Terraform, or attach once via console or `aws cloudfront update-distribution`.
 - Add an `rna_atlas` app client, or reuse `web`; pass the id(s) in `client_ids`.
-- Upload `login.html` + `auth.js` (with the cookie change) to the bucket root.
+- Upload a site-branded `login.html` and a copy of `auth.js` to the bucket
+  root. The page calls `RNAnixAuth.resumeSession()` on load and redirects to
+  `RNAnixAuth.nextUrl()` after sign-in. Add `rna-atlas` to the invite-email
+  site map.
 - `app.js`: redirect to `/login.html?next=` when a data fetch returns 302 or
   403, and stop appending `?t=`.
 - The existing RNAnix API Gateway JWT authorizer stays; API Gateway is a
@@ -253,9 +289,9 @@ The pieces above make this a small change when the owner wants it:
 - Single EC2 instance, no HA. ASG replaces a dead instance; RDS and S3 hold state.
 - Lambda@Edge iteration is slow (minutes to replicate, logs in the viewer's
   nearest region). Unit-test the handler before deploy.
-- Invite email links to the RNAnix login page. Portal invitees set their
-  password there, then sign in on the portal. Custom-message Lambda trigger if
-  this confuses people.
+- One site per invite. A new user's invite email goes to the site that
+  invited them. A user later added to a second site's group gets no email from
+  Cognito; the admin tells them the URL.
 - Cognito pool immutability. No schema or username changes, ever. Pool state
   applied alone, with deletion protection.
 - Cookie is per host. A user signed into rna-atlas.org still signs in again on
@@ -292,11 +328,15 @@ Full scale adds S3 storage for derived data (~$23/TB/mo) and a larger instance.
 
 ## Rollout order
 
-1. PR to `rna_atlas_inference`: `terraform/auth` additions and the `auth.js`
-   cookie change. Owner reviews and applies.
+1. PR to `rna_atlas_inference` (`terraform/auth` additions) and PR to
+   `rnanix_server_frontend` (`auth.js`). Owner reviews and applies.
 2. `modules/edge_auth` with unit tests.
 3. `infra/portal` dev workspace, pointed at a small Drive folder. Smoke tests.
-4. Prod workspace when the RNA schema revision is ready.
-5. Later: mrc-ng-server service and the scale-0 cache change.
-6. Independent of the above: site owner adopts `edge_auth` for rna-atlas.org
+   Until the Janelia Google Cloud project exists, mount a copy of the sample
+   data from S3 at the same path.
+4. Follow-up PR to `rna_atlas_inference`: per-site invite emails. Required
+   before inviting real portal users.
+5. Prod workspace when the RNA schema revision is ready.
+6. Later: mrc-ng-server service and the scale-0 cache change.
+7. Independent of the above: site owner adopts `edge_auth` for rna-atlas.org
    per the handoff section, whenever they choose.
