@@ -22,6 +22,7 @@ resource "aws_db_subnet_group" "catalog" {
   subnet_ids = aws_subnet.private[*].id
 }
 
+# db_name and username are "portal": RDS rejects "catalog" as a reserved word.
 resource "aws_db_instance" "catalog" {
   identifier                = local.name
   engine                    = "postgres"
@@ -30,8 +31,8 @@ resource "aws_db_instance" "catalog" {
   allocated_storage         = 20
   storage_type              = "gp3"
   storage_encrypted         = true
-  db_name                   = "catalog"
-  username                  = "catalog"
+  db_name                   = "portal"
+  username                  = "portal"
   password                  = random_password.db.result
   db_subnet_group_name      = aws_db_subnet_group.catalog.name
   vpc_security_group_ids    = [aws_security_group.db.id]
@@ -49,5 +50,5 @@ resource "aws_secretsmanager_secret" "db_url" {
 
 resource "aws_secretsmanager_secret_version" "db_url" {
   secret_id     = aws_secretsmanager_secret.db_url.id
-  secret_string = "postgresql+psycopg://catalog:${random_password.db.result}@${aws_db_instance.catalog.address}:5432/catalog"
+  secret_string = "postgresql+psycopg://${aws_db_instance.catalog.username}:${random_password.db.result}@${aws_db_instance.catalog.address}:5432/${aws_db_instance.catalog.db_name}"
 }
