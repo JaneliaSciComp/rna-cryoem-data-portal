@@ -5,12 +5,12 @@ variable "region" {
 }
 
 variable "user_pool_id" {
-  description = "Cognito user pool id (rna_atlas_inference terraform/auth output user_pool_id)."
+  description = "Cognito user pool id (infra/auth output user_pool_id)."
   type        = string
 }
 
 variable "data_portal_client_id" {
-  description = "Portal app client id (terraform/auth output data_portal_client_id). Also baked into the nginx image's login page."
+  description = "Portal app client id (infra/auth output data_portal_client_id). Also baked into the nginx image's login page."
   type        = string
 }
 

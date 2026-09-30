@@ -15,8 +15,8 @@ RDS Postgres (CATALOG_DB_URL in Secrets Manager). EventBridge runs the scanner t
 ## Prerequisites
 
 - Terraform >= 1.7, Node 22, Docker, AWS CLI, credentials for the target account.
-- `rna_atlas_inference` `terraform/auth` applied with the `data_portal` client and groups.
-  Its outputs `user_pool_id` and `data_portal_client_id` go in the tfvars.
+- `../auth` applied (the portal's Cognito pool, client, and `data-portal` group). Its outputs
+  `user_pool_id` and `data_portal_client_id` go in the tfvars.
 - `docker login ghcr.io` with access to the `ai-cryoet` images.
 
 ## Deploy a workspace
@@ -34,6 +34,13 @@ scripts/push-images.sh dev <image_tag> <data_portal_client_id>
 The first apply takes about 20 minutes (CloudFront and the VPC origin). The portal service
 retries until the images exist. To skip its backoff after pushing:
 `aws ecs update-service --cluster rna-portal-dev --service portal --force-new-deployment`.
+
+Once the portal is up, put its URL in the invite email and invite people:
+
+```bash
+terraform -chdir=../auth apply -var portal_url=$(terraform output -raw portal_url)
+../auth/scripts/invite-user.sh someone@lab.edu
+```
 
 State is local, in `terraform.tfstate.d/<workspace>/`. It holds the DB password. Back it up, and
 don't commit it.

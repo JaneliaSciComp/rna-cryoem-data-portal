@@ -1,5 +1,5 @@
-# Copy to dev.tfvars (gitignored). The auth values come from rna_atlas_inference:
-#   terraform -chdir=terraform/auth output
+# Copy to dev.tfvars (gitignored). The auth values come from infra/auth:
+#   terraform -chdir=../auth output
 user_pool_id          = "us-east-2_XXXXXXXXX"
 data_portal_client_id = "xxxxxxxxxxxxxxxxxxxxxxxxxx"
 image_tag             = "2.6.0"
