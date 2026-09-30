@@ -1,0 +1,10 @@
+# Copy to dev.tfvars (gitignored). The auth values come from infra/auth:
+#   terraform -chdir=../auth output
+user_pool_id          = "us-east-2_XXXXXXXXX"
+data_portal_client_id = "xxxxxxxxxxxxxxxxxxxxxxxxxx"
+image_tag             = "2.6.0"
+scan_schedule         = "cron(0 7 * * ? *)" # nightly, 07:00 UTC. Prod: "rate(1 hour)".
+
+# Leave both empty to mount s3://<bucket>/sample-data/ as the data tree.
+# drive_folder_id                  = "1AbC..."
+# drive_service_account_secret_arn = "arn:aws:secretsmanager:us-east-2:123456789012:secret:rna-portal/drive-sa-AbCdEf"
