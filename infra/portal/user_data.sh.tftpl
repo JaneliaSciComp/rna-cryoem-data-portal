@@ -19,7 +19,9 @@ curl -fsSL -o /tmp/rclone.zip "https://downloads.rclone.org/v$RCLONE_VERSION/rcl
 unzip -j -o /tmp/rclone.zip '*/rclone' -d /usr/local/bin
 chmod 755 /usr/local/bin/rclone
 
-S3_FLAGS="--s3-provider AWS --s3-env-auth --s3-region $REGION"
+# --s3-no-check-bucket: the bucket exists. Without it rclone calls CreateBucket before every
+# mkdir, S3 refuses, and the mkdir fails with an I/O error.
+S3_FLAGS="--s3-provider AWS --s3-env-auth --s3-region $REGION --s3-no-check-bucket"
 if [ -n "$DRIVE_FOLDER_ID" ]; then
   aws secretsmanager get-secret-value --region "$(echo "$DRIVE_SECRET_ARN" | cut -d: -f4)" \
     --secret-id "$DRIVE_SECRET_ARN" --query SecretString --output text > /etc/rclone-drive-sa.json

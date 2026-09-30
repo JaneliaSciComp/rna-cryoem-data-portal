@@ -104,6 +104,10 @@ run "caches_mount_supports_rename" {
     error_message = "Empty cache dirs must persist: the API won't start without CATALOG_THUMBNAIL_DIR."
   }
   assert {
+    condition     = strcontains(base64decode(aws_launch_template.ecs.user_data), "--s3-no-check-bucket")
+    error_message = "Without it rclone calls CreateBucket before every mkdir, which fails, so boot never joins the cluster."
+  }
+  assert {
     condition     = strcontains(base64decode(aws_launch_template.ecs.user_data), "BUCKET='${aws_s3_bucket.portal.bucket}'")
     error_message = "User data must render the cache bucket name."
   }
