@@ -41,7 +41,9 @@ don't commit it.
 ## Data source
 
 - **Sample data (default):** upload a small tree in the `CATALOG_DATA_ROOT` layout to
-  `s3://$(terraform output -raw bucket)/sample-data/`.
+  `s3://$(terraform output -raw bucket)/sample-data/`. Until the RNA schema revision, the
+  ai-cryoet images only catalog ai-cryoet's layout (`Experimental/<sample>/...`). Use the synthetic 
+  scanner fixtures in ai-cryoet's `tests/catalog/fixtures/` for the proof-of-concept testing.
 - **Google Drive:** share the folder with the service account as Viewer. Store the account's JSON
   key in Secrets Manager (`aws secretsmanager create-secret --name rna-portal/drive-sa
   --secret-string file://key.json`), and set `drive_folder_id` and
