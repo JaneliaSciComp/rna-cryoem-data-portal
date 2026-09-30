@@ -43,6 +43,11 @@
     // Edge redirects land here with ?next=. A still-valid refresh token skips the form.
     auth.resumeSession();
 
+    // Invite links carry ?email=<address>, unencoded. URLSearchParams decodes "+" to a space,
+    // and addresses have no spaces, so put the "+" back (someone+tag@lab.edu).
+    var invited = new URLSearchParams(location.search).get('email');
+    if (invited) document.querySelector('#signin [name=email]').value = invited.replace(/ /g, '+');
+
     document.getElementById('signin').addEventListener('submit', function (ev) {
       ev.preventDefault();
       error.textContent = '';
