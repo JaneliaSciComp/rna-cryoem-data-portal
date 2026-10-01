@@ -15,7 +15,7 @@ variable "data_portal_client_id" {
 }
 
 variable "image_tag" {
-  description = "Tag of the ai-cryoet images mirrored into ECR (for example 2.6.0). scripts/push-images.sh tags the portal nginx image the same."
+  description = "Tag for this stack's images in ECR (for example demo-1). scripts/push-images.sh builds the api and nginx images and mirrors mrc-ng-server under it."
   type        = string
 }
 

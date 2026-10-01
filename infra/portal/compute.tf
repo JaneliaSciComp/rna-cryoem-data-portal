@@ -172,16 +172,15 @@ resource "aws_iam_role_policy" "execution" {
 locals {
   image = { for k, repo in aws_ecr_repository.images : k => "${repo.repository_url}:${var.image_tag}" }
 
-  # Mirrors ai-cryoet's deploy/k8s config.env, with this stack's mount paths.
+  # The portal backend's settings (portal/backend/src/rna_portal/config.py), with this stack's
+  # mount paths.
   catalog_env = [
     { name = "CATALOG_DATA_ROOT", value = "/data" },
     { name = "CATALOG_THUMBNAIL_DIR", value = "/caches/thumbnails" },
-    { name = "CATALOG_MD_PREVIEW_DIR", value = "/caches/md-previews" },
-    { name = "CORS_ORIGINS", value = "https://${aws_cloudfront_distribution.portal.domain_name}" },
   ]
   catalog_secrets = [{ name = "CATALOG_DB_URL", valueFrom = aws_secretsmanager_secret.db_url.arn }]
 
-  log = { for c in ["nginx", "api", "frontend", "scanner"] : c => {
+  log = { for c in ["nginx", "api", "mrc-ng-server", "scanner"] : c => {
     logDriver = "awslogs"
     options = {
       "awslogs-group"         = aws_cloudwatch_log_group.portal.name
@@ -213,13 +212,15 @@ resource "aws_ecs_task_definition" "portal" {
       essential         = true
       memoryReservation = 64
       portMappings      = [{ containerPort = 8080, hostPort = 8080, protocol = "tcp" }]
-      logConfiguration  = local.log["nginx"]
+      # Sends the data files the api authorizes (X-Accel-Redirect to /internal/data/).
+      mountPoints      = [{ sourceVolume = "data", containerPath = "/data", readOnly = true }]
+      logConfiguration = local.log["nginx"]
     },
     {
       name              = "api"
       image             = local.image["api"]
       essential         = true
-      memoryReservation = 1024
+      memoryReservation = 512
       environment       = local.catalog_env
       secrets           = local.catalog_secrets
       mountPoints = [
@@ -229,15 +230,23 @@ resource "aws_ecs_task_definition" "portal" {
       logConfiguration = local.log["api"]
     },
     {
-      name              = "frontend"
-      image             = local.image["frontend"]
+      # Serves maps to Neuroglancer as OME-Zarr, straight from the Drive mount. No pyramids: the
+      # scanner doesn't run mrc-pyramid build, so the (empty) cache root only has to exist.
+      name              = "mrc-ng-server"
+      image             = local.image["mrc-ng-server"]
       essential         = true
-      memoryReservation = 256
+      memoryReservation = 512
       environment = [
-        { name = "CRYOET_API_BASE_URL", value = "http://127.0.0.1:8000" },
-        { name = "PORT", value = "3000" },
+        { name = "HOST", value = "127.0.0.1" },
+        { name = "PORT", value = "8001" },
+        { name = "MRCNG_SOURCE_ROOT", value = "/data" },
+        { name = "MRCNG_CACHE_ROOT", value = "/caches/mrcng" },
       ]
-      logConfiguration = local.log["frontend"]
+      mountPoints = [
+        { sourceVolume = "data", containerPath = "/data", readOnly = true },
+        { sourceVolume = "caches", containerPath = "/caches", readOnly = true },
+      ]
+      logConfiguration = local.log["mrc-ng-server"]
     },
   ])
 }
@@ -292,15 +301,13 @@ resource "aws_ecs_task_definition" "scanner" {
 
   container_definitions = jsonencode([{
     name              = "scanner"
-    image             = local.image["scanner"]
+    image             = local.image["api"]
     essential         = true
     memoryReservation = 1024
-    # The image's default command, under a host-wide lock. EventBridge has no equivalent of
-    # k8s concurrencyPolicy: Forbid, so a run that finds a scan in progress exits 0.
-    # Unsetting the image's MRCNG_CACHE_ROOT=/cache skips the pyramid build (catalog/cli.py)
-    # until mrc-ng-server ships. An empty value in `environment` wouldn't work: ECS drops it.
+    # The backend's scanner, under a host-wide lock. EventBridge has no equivalent of k8s
+    # concurrencyPolicy: Forbid, so a run that finds a scan in progress exits 0.
     # ponytail: host lock, relies on the single instance. Use a DB advisory lock if the ASG grows.
-    command     = ["sh", "-c", "unset MRCNG_CACHE_ROOT; umask 002 && exec flock -n -E 0 /locks/scan.lock pixi run -e catalog scan --init --prune"]
+    command     = ["sh", "-c", "umask 002 && exec flock -n -E 0 /locks/scan.lock pixi run scan"]
     environment = local.catalog_env
     secrets     = local.catalog_secrets
     mountPoints = [

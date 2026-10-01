@@ -1,13 +1,15 @@
 # Data portal on AWS
 
-ai-cryoet's portal containers on one ECS-on-EC2 instance behind CloudFront. Every request passes
-`../modules/edge_auth` (Cognito `id_token` cookie, group `data-portal`) before it reaches the
-internal ALB. Design: `docs/superpowers/specs/2026-09-24-rna-data-portal-aws-design.md`.
+The molecule portal (`portal/backend` and `portal/frontend` in this repo) on one ECS-on-EC2
+instance behind CloudFront. Every request passes `../modules/edge_auth` (Cognito `id_token`
+cookie, group `data-portal`) before it reaches the internal ALB. Design:
+`docs/superpowers/specs/2026-10-01-molecule-portal-demo-design.md`.
 
 ```
 CloudFront + edge_auth -> VPC origin -> internal ALB -> ECS task (host network)
-                                                          nginx:8080 -> api:8000, frontend:3000
-EC2 host: /mnt/data   (rclone, read-only: Drive folder, or s3://<bucket>/sample-data/)
+                                                          nginx:8080 -> api:8000, mrc-ng-server:8001
+                                                          (nginx serves the app and Neuroglancer)
+EC2 host: /mnt/data   (rclone, read-only: the Drive folder, or s3://<bucket>/sample-data/)
           /mnt/caches (rclone: s3://<bucket>/caches/)
 RDS Postgres (CATALOG_DB_URL in Secrets Manager). EventBridge runs the scanner task on a schedule.
 ```
@@ -17,7 +19,7 @@ RDS Postgres (CATALOG_DB_URL in Secrets Manager). EventBridge runs the scanner t
 - Terraform >= 1.7, Node 22, Docker, AWS CLI, credentials for the target account.
 - `../auth` applied (the portal's Cognito pool, client, and `data-portal` group). Its outputs
   `user_pool_id` and `data_portal_client_id` go in the tfvars.
-- `docker login ghcr.io` with access to the `ai-cryoet` images.
+- Docker (push-images.sh builds the api and nginx images and mirrors the public mrc-ng-server image).
 
 ## Deploy a workspace
 
@@ -48,9 +50,8 @@ don't commit it.
 ## Data source
 
 - **Sample data (default):** upload a small tree in the `CATALOG_DATA_ROOT` layout to
-  `s3://$(terraform output -raw bucket)/sample-data/`. Until the RNA schema revision, the
-  ai-cryoet images only catalog ai-cryoet's layout (`Experimental/<sample>/...`). Use the synthetic 
-  scanner fixtures in ai-cryoet's `tests/catalog/fixtures/` for the proof-of-concept testing.
+  `s3://$(terraform output -raw bucket)/sample-data/`, one folder per molecule. Set
+  drive_folder_id and drive_service_account_secret_arn to mount the team's Drive folder.
 - **Google Drive:** share the folder with the service account as Viewer. Store the account's JSON
   key in Secrets Manager (`aws secretsmanager create-secret --name rna-portal/drive-sa
   --secret-string file://key.json`), and set `drive_folder_id` and
@@ -72,4 +73,4 @@ don't commit it.
 
 - One instance, no HA. The ASG replaces a dead one; RDS and S3 hold the state.
 - The scanner lock is per host (`flock`). It needs a DB lock if the ASG ever grows past 1.
-- Neuroglancer (`/api/viewer/`, mrc-ng-server) isn't deployed.
+- mrc-ng-server serves maps at full resolution only (no `mrc-pyramid build`).

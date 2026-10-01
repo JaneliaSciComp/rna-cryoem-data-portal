@@ -156,8 +156,8 @@ run "no_empty_env_values" {
     error_message = "No container may set an environment variable to an empty string."
   }
   assert {
-    condition     = startswith(jsondecode(aws_ecs_task_definition.scanner.container_definitions)[0].command[2], "unset MRCNG_CACHE_ROOT;")
-    error_message = "The scanner must unset the image's MRCNG_CACHE_ROOT=/cache to skip pyramid builds."
+    condition     = strcontains(jsondecode(aws_ecs_task_definition.scanner.container_definitions)[0].command[2], "pixi run scan")
+    error_message = "The scanner task runs the portal backend's scan command."
   }
 }
 
@@ -166,5 +166,33 @@ run "bad_image_rolls_back" {
   assert {
     condition     = aws_ecs_service.portal.deployment_circuit_breaker[0].enable && aws_ecs_service.portal.deployment_circuit_breaker[0].rollback
     error_message = "A task that never becomes healthy (bad image tag) must roll back to the previous task definition."
+  }
+}
+
+run "portal_containers" {
+  command = apply
+  assert {
+    condition     = toset([for c in jsondecode(aws_ecs_task_definition.portal.container_definitions) : c.name]) == toset(["nginx", "api", "mrc-ng-server"])
+    error_message = "The portal task runs nginx (with the app built in), the api, and mrc-ng-server."
+  }
+  assert {
+    condition = alltrue([
+      for c in jsondecode(aws_ecs_task_definition.portal.container_definitions) :
+      contains([for m in try(c.mountPoints, []) : m.containerPath], "/data") if contains(["nginx", "mrc-ng-server"], c.name)
+    ])
+    error_message = "nginx (X-Accel-Redirect) and mrc-ng-server read the data tree."
+  }
+  assert {
+    condition = one([
+      for c in jsondecode(aws_ecs_task_definition.portal.container_definitions) :
+      { for e in c.environment : e.name => e.value } if c.name == "mrc-ng-server"
+    ]) == { HOST = "127.0.0.1", PORT = "8001", MRCNG_SOURCE_ROOT = "/data", MRCNG_CACHE_ROOT = "/caches/mrcng" }
+    error_message = "mrc-ng-server listens on 127.0.0.1:8001 (nginx's mrcng upstream) and serves /data."
+  }
+  assert {
+    condition = jsondecode(aws_ecs_task_definition.scanner.container_definitions)[0].image == one([
+      for c in jsondecode(aws_ecs_task_definition.portal.container_definitions) : c.image if c.name == "api"
+    ])
+    error_message = "The scanner runs from the backend image."
   }
 }

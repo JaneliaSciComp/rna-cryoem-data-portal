@@ -1,4 +1,4 @@
-# RNA AI CryoEM data portal: ai-cryoet's containers on one ECS-on-EC2 instance behind CloudFront,
+# RNA AI CryoEM data portal: the molecule portal on one ECS-on-EC2 instance behind CloudFront,
 # gated by modules/edge_auth. One workspace per environment (dev, prod). See README.md.
 
 terraform {

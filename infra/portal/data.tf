@@ -4,11 +4,14 @@ resource "aws_s3_bucket" "portal" {
   bucket_prefix = "${local.name}-"
 }
 
-# Mirrors of the ai-cryoet images, plus the portal nginx image built from ./nginx.
-# scripts/push-images.sh fills them.
+# The portal backend (api and scanner) and nginx images built from this repo, plus a mirror of
+# mrc-ng-server. scripts/push-images.sh fills them.
 resource "aws_ecr_repository" "images" {
-  for_each = toset(["nginx", "api", "frontend", "scanner"])
+  for_each = toset(["nginx", "api", "mrc-ng-server"])
   name     = "${local.name}/${each.key}"
+  # The repos hold only images push-images.sh can rebuild or re-mirror, so a removed repo (such
+  # as ai-cryoet's old frontend and scanner mirrors) is deleted with its images.
+  force_delete = true
 }
 
 # URL-safe (no special characters): the password is embedded in CATALOG_DB_URL.
