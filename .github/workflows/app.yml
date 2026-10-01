@@ -1,0 +1,35 @@
+name: app
+
+on:
+  push:
+    branches: [main]
+    paths: ["portal/**", ".github/workflows/app.yml"]
+  pull_request:
+    paths: ["portal/**", ".github/workflows/app.yml"]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: test
+        ports: ["55432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    defaults:
+      run:
+        working-directory: portal/backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: prefix-dev/setup-pixi@v0.8.1
+        with:
+          manifest-path: portal/backend/pyproject.toml
+      - run: pixi run test
+
+  backend-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: portal/backend/test-image.sh
