@@ -3,9 +3,9 @@ name: portal
 on:
   push:
     branches: [main]
-    paths: ["infra/portal/**", "infra/modules/edge_auth/**", ".github/workflows/portal.yml"]
+    paths: ["infra/portal/**", "infra/modules/edge_auth/**", "portal/frontend/**", ".github/workflows/portal.yml"]
   pull_request:
-    paths: ["infra/portal/**", "infra/modules/edge_auth/**", ".github/workflows/portal.yml"]
+    paths: ["infra/portal/**", "infra/modules/edge_auth/**", "portal/frontend/**", ".github/workflows/portal.yml"]
 
 jobs:
   nginx:
