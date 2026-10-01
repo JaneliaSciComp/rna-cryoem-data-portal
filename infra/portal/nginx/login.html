@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign in · RNA AI CryoEM Data Portal</title>
+  <style>
+    body { font: 16px/1.5 system-ui, sans-serif; max-width: 22rem; margin: 10vh auto; padding: 0 1rem; }
+    label { display: block; margin-top: 1rem; }
+    input { width: 100%; padding: .5rem; box-sizing: border-box; font: inherit; }
+    button { margin-top: 1.5rem; padding: .5rem 1rem; font: inherit; }
+    #error { color: #b00020; }
+  </style>
+  <!-- The Dockerfile substitutes the client id at build time. -->
+  <script>window.COGNITO_REGION = "us-east-2"; window.COGNITO_CLIENT_ID = "__COGNITO_CLIENT_ID__";</script>
+  <script src="/auth.js"></script>
+</head>
+<body>
+  <h1>RNA AI CryoEM Data Portal</h1>
+
+  <form id="signin">
+    <label>Email <input name="email" type="email" autocomplete="username" required></label>
+    <label>Password <input name="password" type="password" autocomplete="current-password" required></label>
+    <button>Sign in</button>
+  </form>
+
+  <form id="newpw" hidden>
+    <p>Choose a password to finish accepting your invite.</p>
+    <label>New password <input name="password" type="password" autocomplete="new-password" required></label>
+    <button>Set password</button>
+  </form>
+
+  <p id="error" role="alert"></p>
+
+  <script>
+    var auth = window.RNAnixAuth;
+    var error = document.getElementById('error');
+    var invite = null; // { email, session } while an invitee sets a password
+
+    function done() { location.href = auth.nextUrl(); }
+    function fail(e) { error.textContent = e.message || String(e); }
+
+    // Edge redirects land here with ?next=. A still-valid refresh token skips the form.
+    auth.resumeSession();
+
+    // Invite links carry ?email=<address>, unencoded. URLSearchParams decodes "+" to a space,
+    // and addresses have no spaces, so put the "+" back (someone+tag@lab.edu).
+    var invited = new URLSearchParams(location.search).get('email');
+    if (invited) document.querySelector('#signin [name=email]').value = invited.replace(/ /g, '+');
+
+    document.getElementById('signin').addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      error.textContent = '';
+      var form = ev.target, email = form.email.value.trim();
+      auth.login(email, form.password.value).then(done, function (e) {
+        if (e.challenge !== 'NEW_PASSWORD_REQUIRED') return fail(e);
+        invite = { email: email, session: e.session };
+        form.hidden = true;
+        document.getElementById('newpw').hidden = false;
+      });
+    });
+
+    document.getElementById('newpw').addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      error.textContent = '';
+      auth.completeNewPassword(invite.email, ev.target.password.value, invite.session).then(done, fail);
+    });
+  </script>
+</body>
+</html>

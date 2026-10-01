@@ -1,0 +1,79 @@
+#!/bin/bash
+# ECS container instance boot: install rclone, mount the data tree read-only at /mnt/data and
+# the caches at /mnt/caches, then join the cluster. The mounts are systemd units ordered before
+# docker and the ECS agent, so they also come back first after a reboot.
+#
+# Rendered by templatefile() in compute.tf. Only these assignments are templated. The body uses
+# plain $VAR (never the brace form), so `bash -n` checks the raw template in CI.
+CLUSTER='${cluster}'
+BUCKET='${bucket}'
+REGION='${region}'
+DRIVE_FOLDER_ID='${drive_folder_id}'
+DRIVE_SECRET_ARN='${drive_secret_arn}'
+RCLONE_VERSION=1.74.3
+
+set -euxo pipefail
+
+dnf install -y fuse3 unzip awscli-2
+curl -fsSL -o /tmp/rclone.zip "https://downloads.rclone.org/v$RCLONE_VERSION/rclone-v$RCLONE_VERSION-linux-amd64.zip"
+unzip -j -o /tmp/rclone.zip '*/rclone' -d /usr/local/bin
+chmod 755 /usr/local/bin/rclone
+
+# --s3-no-check-bucket: the bucket exists. Without it rclone calls CreateBucket before every
+# mkdir, S3 refuses, and the mkdir fails with an I/O error.
+S3_FLAGS="--s3-provider AWS --s3-env-auth --s3-region $REGION --s3-no-check-bucket"
+if [ -n "$DRIVE_FOLDER_ID" ]; then
+  aws secretsmanager get-secret-value --region "$(echo "$DRIVE_SECRET_ARN" | cut -d: -f4)" \
+    --secret-id "$DRIVE_SECRET_ARN" --query SecretString --output text > /etc/rclone-drive-sa.json
+  chmod 600 /etc/rclone-drive-sa.json
+  DATA_SOURCE=":drive: --drive-service-account-file /etc/rclone-drive-sa.json --drive-scope drive.readonly --drive-root-folder-id $DRIVE_FOLDER_ID"
+else
+  DATA_SOURCE=":s3:$BUCKET/sample-data $S3_FLAGS"
+fi
+
+# mount_unit NAME DIR RCLONE_ARGS... writes rclone-NAME.service. Type=notify: rclone tells
+# systemd once the mount is live, so `systemctl enable --now` returns only after that.
+mount_unit() {
+  local name=$1 dir=$2
+  shift 2
+  cat > "/etc/systemd/system/rclone-$name.service" <<UNIT
+[Unit]
+Description=rclone mount at $dir
+Wants=network-online.target
+After=network-online.target
+Before=docker.service ecs.service
+
+[Service]
+Type=notify
+ExecStartPre=/usr/bin/mkdir -p $dir /run/rclone-rc
+# A socket left by a crash would stop rclone binding it again.
+ExecStartPre=/usr/bin/rm -f /run/rclone-rc/$name.sock
+ExecStart=/usr/local/bin/rclone mount $* $dir --allow-other --cache-dir /var/cache/rclone-$name
+ExecStop=/usr/bin/fusermount3 -u $dir
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+}
+
+# The data's canonical copy is elsewhere (Drive, or the sample prefix). Never writable from here.
+# A cold read takes seconds, so nothing expires on a timer: rclone's defaults drop listings after
+# 5 minutes and files unread for an hour. Instead the scanner refreshes the listings over the rc
+# socket before each scan (Drive's change polling doesn't reach a folder shared with a service
+# account), then reads the page's files into the cache (scanner.warm); the 50G cap evicts.
+# ponytail: --rc-no-auth, so whoever can open the socket can drive rclone as root. Only root
+# and the scanner task, which mounts /run/rclone-rc, can. Set --rc-user/--rc-pass if more do.
+mount_unit data /mnt/data $DATA_SOURCE --read-only --vfs-cache-mode full --vfs-cache-max-size 50G \
+  --vfs-cache-max-age 8760h --dir-cache-time 8760h --rc --rc-no-auth --rc-addr unix:///run/rclone-rc/data.sock
+# The scanner writes each cache file under a temp name and renames it. rclone renames on S3
+# (copy plus delete); Mountpoint for S3 can't. Directory markers keep empty dirs, which the API
+# requires before the first scan.
+mount_unit caches /mnt/caches ":s3:$BUCKET/caches" $S3_FLAGS --s3-directory-markers --vfs-cache-mode writes
+
+systemctl daemon-reload
+systemctl enable --now rclone-data rclone-caches
+mkdir -p /mnt/caches/thumbnails /mnt/caches/md-previews /var/lib/rna-portal
+
+# Last, so an instance whose mounts failed never joins the cluster.
+echo "ECS_CLUSTER=$CLUSTER" >> /etc/ecs/ecs.config
