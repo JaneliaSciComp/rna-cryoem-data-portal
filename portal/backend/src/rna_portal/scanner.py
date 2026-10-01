@@ -4,7 +4,10 @@ Each molecule is synced in its own transaction, so one bad folder can't fail the
 that can't be listed, or lists no folders, stops the scan before anything is deleted: a Drive
 outage must never look like every molecule being removed.
 """
+import http.client
+import json
 import logging
+import socket
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -164,10 +167,45 @@ def warm(engine: Engine, root: Path) -> list[str]:
     return read
 
 
+class _UnixConnection(http.client.HTTPConnection):
+    def __init__(self, path: Path, timeout: float):
+        super().__init__("localhost", timeout=timeout)
+        self.path = path
+
+    def connect(self) -> None:
+        self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self.sock.settimeout(self.timeout)
+        self.sock.connect(str(self.path))
+
+
+def refresh_listings(rc_socket: Path, timeout: float = 1800) -> None:
+    """Have the data mount's rclone re-read every directory listing from Drive. The mount keeps
+    listings indefinitely, so without this the scan would miss files added, changed, or deleted
+    since they were read."""
+    conn = _UnixConnection(rc_socket, timeout)
+    try:
+        conn.request("POST", "/vfs/refresh", json.dumps({"recursive": "true"}), {"Content-Type": "application/json"})
+        resp = conn.getresponse()
+        body = resp.read()
+    except OSError as exc:
+        raise RootUnavailable(f"can't refresh the mount via {rc_socket}: {exc}") from exc
+    finally:
+        conn.close()
+    # 200 with {"result": {"<dir>": "OK" | "<error>"}}; anything else is a failure.
+    try:
+        results = json.loads(body)["result"].values() if resp.status == 200 else None
+    except (ValueError, KeyError, AttributeError):
+        results = None
+    if results is None or any(r != "OK" for r in results):
+        raise RootUnavailable(f"rclone vfs/refresh failed: {resp.status} {body[:500]!r}")
+
+
 def main() -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     db.migrate()
     try:
+        if (rc_socket := config.rclone_socket()) is not None:
+            refresh_listings(rc_socket)
         r = scan(db.engine(), config.data_root(), config.thumbnail_dir())
     except RootUnavailable as exc:
         log.error("%s; catalog left unchanged", exc)

@@ -298,6 +298,12 @@ resource "aws_ecs_task_definition" "scanner" {
     name      = "locks"
     host_path = "/var/lib/rna-portal"
   }
+  # rclone's remote control for the data mount (user_data.sh.tftpl): the scanner refreshes the
+  # mount's listings through it before scanning.
+  volume {
+    name      = "rclone-rc"
+    host_path = "/run/rclone-rc"
+  }
 
   container_definitions = jsonencode([{
     name              = "scanner"
@@ -308,12 +314,13 @@ resource "aws_ecs_task_definition" "scanner" {
     # concurrencyPolicy: Forbid, so a run that finds a scan in progress exits 0.
     # ponytail: host lock, relies on the single instance. Use a DB advisory lock if the ASG grows.
     command     = ["sh", "-c", "umask 002 && exec flock -n -E 0 /locks/scan.lock pixi run scan"]
-    environment = local.catalog_env
+    environment = concat(local.catalog_env, [{ name = "CATALOG_RCLONE_SOCKET", value = "/rclone-rc/data.sock" }])
     secrets     = local.catalog_secrets
     mountPoints = [
       { sourceVolume = "data", containerPath = "/data", readOnly = true },
       { sourceVolume = "caches", containerPath = "/caches", readOnly = false },
       { sourceVolume = "locks", containerPath = "/locks", readOnly = false },
+      { sourceVolume = "rclone-rc", containerPath = "/rclone-rc", readOnly = false },
     ]
     logConfiguration = local.log["scanner"]
   }])

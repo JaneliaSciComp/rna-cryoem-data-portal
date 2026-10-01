@@ -26,9 +26,7 @@ if [ -n "$DRIVE_FOLDER_ID" ]; then
   aws secretsmanager get-secret-value --region "$(echo "$DRIVE_SECRET_ARN" | cut -d: -f4)" \
     --secret-id "$DRIVE_SECRET_ARN" --query SecretString --output text > /etc/rclone-drive-sa.json
   chmod 600 /etc/rclone-drive-sa.json
-  # Drive pushes changes (--poll-interval), so listings can be cached until then; an expired
-  # listing costs a page a Drive round trip. S3 can't push, so it keeps rclone's 5-minute default.
-  DATA_SOURCE=":drive: --drive-service-account-file /etc/rclone-drive-sa.json --drive-scope drive.readonly --drive-root-folder-id $DRIVE_FOLDER_ID --dir-cache-time 8760h --poll-interval 1m"
+  DATA_SOURCE=":drive: --drive-service-account-file /etc/rclone-drive-sa.json --drive-scope drive.readonly --drive-root-folder-id $DRIVE_FOLDER_ID"
 else
   DATA_SOURCE=":s3:$BUCKET/sample-data $S3_FLAGS"
 fi
@@ -47,7 +45,9 @@ Before=docker.service ecs.service
 
 [Service]
 Type=notify
-ExecStartPre=/usr/bin/mkdir -p $dir
+ExecStartPre=/usr/bin/mkdir -p $dir /run/rclone-rc
+# A socket left by a crash would stop rclone binding it again.
+ExecStartPre=/usr/bin/rm -f /run/rclone-rc/$name.sock
 ExecStart=/usr/local/bin/rclone mount $* $dir --allow-other --cache-dir /var/cache/rclone-$name
 ExecStop=/usr/bin/fusermount3 -u $dir
 Restart=on-failure
@@ -58,10 +58,14 @@ UNIT
 }
 
 # The data's canonical copy is elsewhere (Drive, or the sample prefix). Never writable from here.
-# The scanner reads the page's files into the cache after each scan (scanner.warm). Keep them
-# until the 50G cap evicts them: rclone's default drops anything unread for an hour, and a cold
-# read takes seconds.
-mount_unit data /mnt/data $DATA_SOURCE --read-only --vfs-cache-mode full --vfs-cache-max-size 50G --vfs-cache-max-age 8760h
+# A cold read takes seconds, so nothing expires on a timer: rclone's defaults drop listings after
+# 5 minutes and files unread for an hour. Instead the scanner refreshes the listings over the rc
+# socket before each scan (Drive's change polling doesn't reach a folder shared with a service
+# account), then reads the page's files into the cache (scanner.warm); the 50G cap evicts.
+# ponytail: --rc-no-auth, so whoever can open the socket can drive rclone as root. Only root
+# and the scanner task, which mounts /run/rclone-rc, can. Set --rc-user/--rc-pass if more do.
+mount_unit data /mnt/data $DATA_SOURCE --read-only --vfs-cache-mode full --vfs-cache-max-size 50G \
+  --vfs-cache-max-age 8760h --dir-cache-time 8760h --rc --rc-no-auth --rc-addr unix:///run/rclone-rc/data.sock
 # The scanner writes each cache file under a temp name and renames it. rclone renames on S3
 # (copy plus delete); Mountpoint for S3 can't. Directory markers keep empty dirs, which the API
 # requires before the first scan.

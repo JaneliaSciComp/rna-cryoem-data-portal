@@ -1,5 +1,9 @@
+import json
 import os
 import shutil
+import socketserver
+import threading
+from http.server import BaseHTTPRequestHandler
 
 import pytest
 from sqlalchemy import select
@@ -7,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from rna_portal import parsers
 from rna_portal.models import Molecule, MoleculeFile
-from rna_portal.scanner import RootUnavailable, scan, warm
+from rna_portal.scanner import RootUnavailable, refresh_listings, scan, warm
 from samples import cryosparc_log, header_line
 
 TREE = {
@@ -203,3 +207,47 @@ def test_warm_reads_what_the_page_loads_and_skips_missing_files(engine, root, th
         "Mol9_gRNAde/CryoEM/Maps/J300_fsc_iteration_009.png",
         "Mol9_gRNAde/PDB_deposit/10ZT.pdb",
     ]
+
+
+@pytest.fixture
+def fake_rclone(tmp_path):
+    """A stand-in for the mount's rclone rc socket. Set .reply; read .requests."""
+    class Handler(BaseHTTPRequestHandler):
+        def do_POST(self):
+            body = self.rfile.read(int(self.headers["Content-Length"]))
+            server.requests.append((self.path, json.loads(body)))
+            status, reply = server.reply
+            self.send_response(status)
+            self.end_headers()
+            self.wfile.write(json.dumps(reply).encode())
+
+        def log_message(self, *args):
+            pass
+
+    path = tmp_path / "rc.sock"
+    server = socketserver.UnixStreamServer(str(path), Handler)
+    server.path, server.requests, server.reply = path, [], (200, {"result": {"": "OK"}})
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    yield server
+    server.shutdown()
+    server.server_close()
+
+
+def test_refresh_listings_asks_rclone_for_the_whole_tree(fake_rclone):
+    refresh_listings(fake_rclone.path)
+    assert fake_rclone.requests == [("/vfs/refresh", {"recursive": "true"})]
+
+
+@pytest.mark.parametrize("reply", [
+    (200, {"result": {"": "file does not exist"}}),
+    (403, {"error": "authentication must be set up"}),
+])
+def test_refresh_listings_failure_is_root_unavailable(fake_rclone, reply):
+    fake_rclone.reply = reply
+    with pytest.raises(RootUnavailable):
+        refresh_listings(fake_rclone.path)
+
+
+def test_refresh_listings_without_rclone_is_root_unavailable(tmp_path):
+    with pytest.raises(RootUnavailable):
+        refresh_listings(tmp_path / "missing.sock")

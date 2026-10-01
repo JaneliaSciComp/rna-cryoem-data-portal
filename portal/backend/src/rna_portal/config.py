@@ -16,3 +16,10 @@ def data_root() -> Path:
 def thumbnail_dir() -> Path:
     """Where the scanner writes molecule thumbnails and the API reads them."""
     return Path(os.environ.get("CATALOG_THUMBNAIL_DIR", "/caches/thumbnails"))
+
+
+def rclone_socket() -> Path | None:
+    """The data mount's rclone remote-control socket. Unset where the data root isn't an rclone
+    mount (tests, local runs): nothing to refresh."""
+    path = os.environ.get("CATALOG_RCLONE_SOCKET")
+    return Path(path) if path else None
