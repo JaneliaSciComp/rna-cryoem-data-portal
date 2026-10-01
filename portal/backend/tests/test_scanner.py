@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from rna_portal import parsers
 from rna_portal.models import Molecule, MoleculeFile
-from rna_portal.scanner import RootUnavailable, scan
+from rna_portal.scanner import RootUnavailable, scan, warm
 from samples import cryosparc_log, header_line
 
 TREE = {
@@ -191,3 +191,15 @@ def test_thumbnail_falls_back_to_a_predicted_model(engine, root, thumbs):
     scan(engine, root, thumbs, render)
 
     assert root / "Mol9_gRNAde/AlphaFold/fold_p20_grnade2_model_0.cif" in render.calls
+
+
+def test_warm_reads_what_the_page_loads_and_skips_missing_files(engine, root, thumbs):
+    scan(engine, root, thumbs, FakeRender())
+    (root / "Mol9_gRNAde/CryoEM/Micrographs/J1_raw_data_001.png").unlink()
+
+    assert warm(engine, root) == [
+        "Mol23_TrpHolo/PDB_entry/D_1000307649_model-annotate_P1.pdb",
+        "Mol9_gRNAde/AlphaFold/fold_p20_grnade2_model_0.cif",
+        "Mol9_gRNAde/CryoEM/Maps/J300_fsc_iteration_009.png",
+        "Mol9_gRNAde/PDB_deposit/10ZT.pdb",
+    ]

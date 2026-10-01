@@ -139,6 +139,31 @@ def _thumbnail(root: Path, thumbnails: Path, folder: str, found: Found, render: 
     return name
 
 
+# What the molecule page loads. Maps are left out: they're big, and rclone's cache is capped.
+WARM_KINDS = (Kind.MODEL, Kind.PLOT, Kind.MICROGRAPH)
+
+
+def warm(engine: Engine, root: Path) -> list[str]:
+    """Read every file the molecule page loads, so rclone's disk cache holds it before the first
+    visitor asks: a cold read from Drive takes seconds. Returns the paths read. A file that can't
+    be read is logged and skipped; warming never fails the scan."""
+    with Session(engine) as session:
+        paths = session.scalars(
+            select(MoleculeFile.path).where(MoleculeFile.kind.in_(WARM_KINDS)).order_by(MoleculeFile.path)
+        ).all()
+    read = []
+    for path in paths:
+        try:
+            with open(root / path, "rb") as f:
+                while f.read(1 << 20):
+                    pass
+        except OSError:
+            log.warning("couldn't warm %s", path, exc_info=True)
+            continue
+        read.append(path)
+    return read
+
+
 def main() -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     db.migrate()
@@ -151,6 +176,7 @@ def main() -> int:
         "scan complete: added=%d updated=%d unchanged=%d deleted=%d failed=%d",
         len(r.added), len(r.updated), len(r.unchanged), len(r.deleted), len(r.failed),
     )
+    log.info("warmed %d files", len(warm(db.engine(), config.data_root())))
     if r.failed:
         log.error("failed molecules: %s", ", ".join(r.failed))
     return 1 if r.failed else 0
