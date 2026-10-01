@@ -1,4 +1,5 @@
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { mockFetch, renderApp } from '../test/renderApp';
 
 const MOL9 = {
@@ -32,4 +33,17 @@ test('shows an error when the API fails', async () => {
   mockFetch({});
   renderApp('/');
   expect(await screen.findByText(/Couldn't load the molecules/)).toBeInTheDocument();
+});
+
+test('enlarges a thumbnail without opening the molecule', async () => {
+  mockFetch({ '/api/molecules': [MOL23, MOL9] });
+  renderApp('/');
+
+  await userEvent.click(await screen.findByRole('button', { name: 'Enlarge thumbnail for gRNAde' }));
+
+  const dialog = await screen.findByRole('dialog');
+  expect(within(dialog).getByRole('img', { name: 'gRNAde' })).toHaveAttribute('src', '/api/thumbnails/Mol9_gRNAde.png');
+  expect(screen.queryByText('Molecule not found.')).not.toBeInTheDocument();
+  // A molecule without a thumbnail has nothing to enlarge.
+  expect(screen.queryByRole('button', { name: 'Enlarge thumbnail for TrpHolo' })).not.toBeInTheDocument();
 });
