@@ -1,0 +1,23 @@
+name: auth
+
+on:
+  push:
+    branches: [main]
+    paths: ["infra/auth/**", ".github/workflows/auth.yml"]
+  pull_request:
+    paths: ["infra/auth/**", ".github/workflows/auth.yml"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/auth
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - run: terraform fmt -check -recursive
+      - run: terraform init -backend=false
+      - run: terraform validate
+      - run: terraform test
+      - run: scripts/test-invite-user.sh

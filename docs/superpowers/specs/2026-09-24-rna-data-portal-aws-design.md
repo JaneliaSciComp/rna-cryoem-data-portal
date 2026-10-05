@@ -82,7 +82,7 @@ Documented for context only; not modified by this spec.
 |---|---|---|
 | Orchestration | ECS on EC2 (Auto Scaling Group of 1, ECS-optimized AMI) | Existing containers read data and caches from a filesystem. EC2 permits FUSE mounts (`rclone mount`, Mountpoint for S3). Fargate does not, forcing EFS (~$0.30/GB/mo) or code changes. |
 | IaC | Terraform, plain HCL | Cognito pool is Terraform. Consistency with collaborators. |
-| Identity | Reuse the existing RNAnix pool. Add: portal app client, two groups, `deletion_protection`. | Shared invite list, one admin flow, no second pool to keep in sync. |
+| Identity | ~~Reuse the existing RNAnix pool.~~ Proof of concept (POC): the portal's own pool in `infra/auth` (see "Update 2026-09-30"). | Shared invite list, one admin flow, no second pool to keep in sync. |
 | Login UX | Portal's own `login.html` with portal branding, on top of an unmodified copy of RNAnix's `auth.js`, `USER_PASSWORD_AUTH` | `auth.js` holds all the Cognito logic with no branding or dependencies. RNAnix's `login.html` is RNAnix-branded and loads RNAnix's `style.css` and `app.js`, so the portal doesn't copy it. No Hosted UI or Cognito domain. |
 | Enforcement | Lambda@Edge on CloudFront viewer-request: verify ID-token cookie with `aws-jwt-verify`, check `cognito:groups` | Works for any origin (ALB here, S3 for a static site). CloudFront Functions cannot verify RS256 JWTs. |
 | Site scoping | Cognito groups `data-portal` and `rna-atlas`, checked at the edge | Runs on every request. A Pre-Authentication trigger is not a reliable gate because sign-in state is shared across app clients. |
@@ -340,3 +340,19 @@ Full scale adds S3 storage for derived data (~$23/TB/mo) and a larger instance.
 6. Later: mrc-ng-server service and the scale-0 cache change.
 7. Independent of the above: site owner adopts `edge_auth` for rna-atlas.org
    per the handoff section, whenever they choose.
+
+## Update 2026-09-30: portal-owned Cognito pool for the POC
+
+The POC uses its own Cognito pool, `infra/auth` in this repo, instead of the shared RNAnix pool,
+so it doesn't wait on `rna_atlas_inference#8`.
+
+- `infra/auth` copies the pool settings and the `data_portal` client shape from
+  `rna_atlas_inference/terraform/auth/cognito.tf`. It adds only the `data-portal` group, and it
+  keeps the output names, so `infra/portal` and `edge_auth` are unchanged.
+- The invite email links to the portal's login page. Per-site invite emails (Deliverable 2's
+  follow-up PR, rollout step 4) aren't needed for this pool. `infra/auth/scripts/invite-user.sh`
+  creates the user and adds the group.
+- `rnanix_server_frontend#1` was never a dependency: the portal serves its own copy of `auth.js`.
+- Cost: users who also use RNAnix have two accounts. Moving to the shared pool later means
+  re-inviting the portal's users, because Cognito can't move passwords between pools. The open PRs
+  stay valid for that move.

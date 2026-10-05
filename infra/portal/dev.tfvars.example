@@ -1,0 +1,11 @@
+# Copy to dev.tfvars (gitignored). The auth values come from infra/auth:
+#   terraform -chdir=../auth output
+user_pool_id          = "us-east-2_XXXXXXXXX"
+data_portal_client_id = "xxxxxxxxxxxxxxxxxxxxxxxxxx"
+image_tag             = "demo-1"              # any new tag per push; scripts/push-images.sh builds it
+scan_schedule         = "cron(0 7 * * ? *)" # nightly, 07:00 UTC. Prod: "rate(1 hour)".
+
+# The team's Drive folder and the service account key in Secrets Manager. Leave both empty to
+# mount s3://<bucket>/sample-data/ instead.
+# drive_folder_id                  = "102D8kAA0a9392En4OfnJeEB--j98kMbD"
+# drive_service_account_secret_arn = "arn:aws:secretsmanager:us-east-2:123456789012:secret:rna-portal/drive-sa-AbCdEf"
