@@ -12,7 +12,7 @@ mock_provider "aws" {
 
 variables {
   name           = "test-edge-auth"
-  required_group = "data-portal"
+  required_group = "app:data-portal"
   user_pool_id   = "us-east-2_TestPool1"
   client_ids     = ["portalclient"]
   gated_paths    = ["/*"]
