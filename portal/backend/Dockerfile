@@ -1,10 +1,11 @@
 # Portal backend: the API (default command) and the scanner (`pixi run scan`), one image.
-# Build context: portal/backend/.
+# Build context: portal/ (the pixi workspace).
 FROM ghcr.io/prefix-dev/pixi:0.73.0-bookworm-slim AS deps
 WORKDIR /app
-COPY pyproject.toml pixi.lock ./
-COPY src ./src
-RUN pixi install --locked
+COPY pixi.toml pixi.lock dotenv.sh ./
+COPY backend/pyproject.toml ./backend/
+COPY backend/src ./backend/src
+RUN pixi install --locked -e default
 
 FROM ghcr.io/prefix-dev/pixi:0.73.0-bookworm-slim
 WORKDIR /app
@@ -16,6 +17,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       libfontconfig1 libgssapi-krb5-2 \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=deps /app /app
-COPY alembic.ini ./
+COPY backend/alembic.ini ./backend/
 ENV HOME=/app
 CMD ["pixi", "run", "api"]

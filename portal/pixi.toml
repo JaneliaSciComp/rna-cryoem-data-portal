@@ -1,0 +1,47 @@
+# The portal's one pixi workspace: the backend (default environment, also the image) and the
+# frontend's dev tasks (the frontend environment, Node only). `pixi run <task>` picks the
+# environment that has the task. Local settings come from .env (see .env.example).
+[workspace]
+name = "rna-portal"
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[activation]
+scripts = ["dotenv.sh"]
+
+# ponytail: one environment for the API, the scanner, and the tests, so the image is the test
+# environment. Split a test feature out if the image size starts to matter.
+[dependencies]
+python = "3.12.*"
+sqlalchemy = ">=2.0"
+psycopg = ">=3.1"
+alembic = ">=1.13"
+fastapi = ">=0.110"
+uvicorn = "*"
+gemmi = ">=0.6"
+numpy = "*"
+pytest = "*"
+httpx = "*"
+
+[pypi-dependencies]
+rna-portal = { path = "./backend", editable = true }
+ovito = "*"
+
+[tasks]
+# One Postgres: the tests own the `postgres` database (they drop its schema), local runs use `portal`.
+test = { cmd = "pytest", cwd = "backend" }
+db-up = "docker start rna-portal-testdb 2>/dev/null || docker run -d --name rna-portal-testdb -p 55432:5432 -e POSTGRES_PASSWORD=test -e POSTGRES_DB=portal postgres:16-alpine"
+api = "uvicorn rna_portal.api:app --host 127.0.0.1 --port 8000"
+scan = "python -m rna_portal.scanner"
+
+[feature.frontend.dependencies]
+nodejs = "22.*"
+
+[feature.frontend.tasks]
+frontend-install = { cmd = "npm ci", cwd = "frontend", inputs = ["frontend/package-lock.json"], outputs = ["frontend/node_modules/.package-lock.json"] }
+frontend = { cmd = "npm run dev", cwd = "frontend", depends-on = ["frontend-install"] }
+test-frontend = { cmd = "npm run typecheck && npm test", cwd = "frontend", depends-on = ["frontend-install"] }
+build-frontend = { cmd = "npm run build", cwd = "frontend", depends-on = ["frontend-install"] }
+
+[environments]
+frontend = { features = ["frontend"], no-default-feature = true }
