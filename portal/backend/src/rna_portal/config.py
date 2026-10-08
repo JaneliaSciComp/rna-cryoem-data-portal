@@ -18,6 +18,12 @@ def thumbnail_dir() -> Path:
     return Path(os.environ.get("CATALOG_THUMBNAIL_DIR", "/caches/thumbnails"))
 
 
+def serve_files() -> bool:
+    """Local development only: the API sends file bodies itself, because there's no nginx to
+    follow its X-Accel-Redirect."""
+    return os.environ.get("CATALOG_SERVE_FILES") == "1"
+
+
 def rclone_socket() -> Path | None:
     """The data mount's rclone remote-control socket. Unset where the data root isn't an rclone
     mount (tests, local runs): nothing to refresh."""

@@ -3,8 +3,8 @@
 # scanner task's flock wrapper exists, OVITO renders a thumbnail headless (its Qt needs system
 # libraries the pixi base image lacks), and the API imports and answers /health.
 set -euo pipefail
-cd "$(dirname "$0")"
-docker build -q -t rna-portal-api:test . >/dev/null
+cd "$(dirname "$0")/.."
+docker build -q -f backend/Dockerfile -t rna-portal-api:test . >/dev/null
 
 docker run --rm --entrypoint flock rna-portal-api:test --version >/dev/null
 
