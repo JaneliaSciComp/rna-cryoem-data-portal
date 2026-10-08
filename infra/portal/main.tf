@@ -7,7 +7,7 @@ terraform {
     aws    = { source = "hashicorp/aws", version = ">= 6.0" }
     random = { source = "hashicorp/random", version = ">= 3.6" }
   }
-  # ponytail: local state per workspace (terraform.tfstate.d/, gitignored), like infra/auth.
+  # ponytail: local state per workspace (terraform.tfstate.d/, gitignored).
   # Move to an S3 backend with use_lockfile when a second person applies this stack.
 }
 

@@ -1,2 +1,4 @@
 docs/superpowers/
 .scratch/
+# The retired portal-only Cognito pool's state. Keep it until that pool is deleted.
+infra/auth/
