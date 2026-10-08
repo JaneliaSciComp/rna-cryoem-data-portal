@@ -1,5 +1,6 @@
-# Copy to dev.tfvars (gitignored). The auth values come from infra/auth:
-#   terraform -chdir=../auth output
+# Copy to dev.tfvars (gitignored). The auth values come from the shared pool in
+# JaneliaSciComp/rna_auth_aws_daslab:
+#   terraform -chdir=terraform/auth output -raw user_pool_id   (and data_portal_client_id)
 user_pool_id          = "us-east-2_XXXXXXXXX"
 data_portal_client_id = "xxxxxxxxxxxxxxxxxxxxxxxxxx"
 image_tag             = "demo-1"              # any new tag per push; scripts/push-images.sh builds it

@@ -7,7 +7,7 @@ module "edge_auth" {
   providers = { aws = aws.us_east_1 }
 
   name           = local.name
-  required_group = "data-portal"
+  required_group = "app:data-portal"
   user_pool_id   = var.user_pool_id
   client_ids     = [var.data_portal_client_id]
   gated_paths    = ["/*"]

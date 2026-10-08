@@ -2,7 +2,7 @@
 
 The molecule portal (`portal/backend` and `portal/frontend` in this repo) on one ECS-on-EC2
 instance behind CloudFront. Every request passes `../modules/edge_auth` (Cognito `id_token`
-cookie, group `data-portal`) before it reaches the internal ALB. Design:
+cookie, group `app:data-portal`) before it reaches the internal ALB. Design:
 `docs/superpowers/specs/2026-10-01-molecule-portal-demo-design.md`.
 
 ```
@@ -17,7 +17,9 @@ RDS Postgres (CATALOG_DB_URL in Secrets Manager). EventBridge runs the scanner t
 ## Prerequisites
 
 - Terraform >= 1.7, Node 22, Docker, AWS CLI, credentials for the target account.
-- `../auth` applied (the portal's Cognito pool, client, and `data-portal` group). Its outputs
+- The shared Cognito pool from
+  [`rna_auth_aws_daslab`](https://github.com/JaneliaSciComp/rna_auth_aws_daslab), applied with
+  its `data_portal` client and `app:data-portal` group. Its `terraform/auth` outputs
   `user_pool_id` and `data_portal_client_id` go in the tfvars.
 - Docker (push-images.sh builds the api and nginx images and mirrors the public mrc-ng-server image).
 
@@ -37,12 +39,16 @@ The first apply takes about 20 minutes (CloudFront and the VPC origin). The port
 retries until the images exist. To skip its backoff after pushing:
 `aws ecs update-service --cluster rna-portal-dev --service portal --force-new-deployment`.
 
-Once the portal is up, put its URL in the invite email and invite people:
+Once the portal is up, invite people from a checkout of `rna_auth_aws_daslab`. Both commands
+need Cognito admin credentials for the account that holds the pool:
 
 ```bash
-terraform -chdir=../auth apply -var portal_url=$(terraform output -raw portal_url)
-../auth/scripts/invite-user.sh someone@lab.edu
+scripts/invite_user.sh someone@lab.edu --apps data-portal   # new user
+scripts/user_access.sh grant someone@lab.edu data-portal    # existing user, e.g. an RNAnix user
 ```
+
+The shared pool's invite email is branded for RNAnix and links to `https://rna-atlas.org/login`,
+not this portal. Send new users the portal's URL (`terraform output -raw portal_url`) yourself.
 
 State is local, in `terraform.tfstate.d/<workspace>/`. It holds the DB password. Back it up, and
 don't commit it.

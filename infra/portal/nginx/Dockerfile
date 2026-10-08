@@ -20,7 +20,7 @@ RUN npm ci && npm run build -- --output /ng-out
 
 FROM nginxinc/nginx-unprivileged:1.27-alpine
 
-# The data_portal app client id (infra/auth output data_portal_client_id). Required.
+# The data_portal app client id (rna_auth_aws_daslab terraform/auth output data_portal_client_id). Required.
 ARG COGNITO_CLIENT_ID
 
 COPY infra/portal/nginx/nginx.conf /etc/nginx/conf.d/default.conf
