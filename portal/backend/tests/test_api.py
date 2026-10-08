@@ -22,6 +22,7 @@ def client(engine, tmp_path, monkeypatch):
     (tmp_path / "secret.png").write_bytes(b"outside")
     (thumbs / "notes.txt").write_text("not a png")
     monkeypatch.setenv("CATALOG_THUMBNAIL_DIR", str(thumbs))
+    monkeypatch.delenv("CATALOG_SERVE_FILES", raising=False)  # portal/.env sets it for local runs
 
     with Session(engine) as s:
         s.add_all([
@@ -97,6 +98,18 @@ def test_model_file_is_inline(client):
     assert r.headers["x-accel-redirect"] == "/internal/data/Mol9_gRNAde/PDB_deposit/10ZT.pdb"
     assert r.headers["content-disposition"].startswith("inline;")
     assert r.headers["content-type"].startswith("chemical/x-pdb")
+
+
+def test_serve_files_sends_the_body(client, tmp_path, monkeypatch):
+    model = tmp_path / "data/Mol9_gRNAde/PDB_deposit/10ZT.pdb"
+    model.parent.mkdir(parents=True)
+    model.write_text("HEADER\n")
+    monkeypatch.setenv("CATALOG_DATA_ROOT", str(tmp_path / "data"))
+    monkeypatch.setenv("CATALOG_SERVE_FILES", "1")
+    r = client.get(f"/files/{file_id(client, '10ZT.pdb')}")
+    assert r.content == b"HEADER\n"
+    assert "x-accel-redirect" not in r.headers
+    assert r.headers["content-disposition"].startswith("inline;")
 
 
 def test_unknown_file_is_404(client):

@@ -2,7 +2,8 @@
 
 Files are never read here: /files/{id} looks the file up in the catalog and answers with an
 X-Accel-Redirect to nginx's internal /internal/data/ location, so only cataloged files can be
-fetched and a 300 MB map never passes through Python.
+fetched and a 300 MB map never passes through Python. CATALOG_SERVE_FILES=1 (local
+development, no nginx) sends the file from here instead.
 """
 from collections.abc import Iterator
 from datetime import datetime
@@ -119,14 +120,13 @@ def get_file(file_id: int, session: Session = Depends(get_session)):
         raise HTTPException(status_code=404, detail="file not found")
     name = PurePosixPath(f.path).name
     disposition = "attachment" if f.kind == Kind.MAP else "inline"
-    return Response(
-        media_type=_MEDIA_TYPES.get(PurePosixPath(name).suffix.lower(), "application/octet-stream"),
-        headers={
-            # Percent-encoded: nginx decodes it, and a raw "#" or "?" would cut the path short.
-            "X-Accel-Redirect": "/internal/data/" + quote(f.path),
-            "Content-Disposition": f"{disposition}; filename*=UTF-8''{quote(name)}",
-        },
-    )
+    media_type = _MEDIA_TYPES.get(PurePosixPath(name).suffix.lower(), "application/octet-stream")
+    headers = {"Content-Disposition": f"{disposition}; filename*=UTF-8''{quote(name)}"}
+    if config.serve_files():
+        return FileResponse(config.data_root() / f.path, media_type=media_type, headers=headers)
+    # Percent-encoded: nginx decodes it, and a raw "#" or "?" would cut the path short.
+    headers["X-Accel-Redirect"] = "/internal/data/" + quote(f.path)
+    return Response(media_type=media_type, headers=headers)
 
 
 @app.get("/thumbnails/{relpath:path}")
