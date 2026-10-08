@@ -47,8 +47,10 @@ scripts/invite_user.sh someone@lab.edu --apps data-portal   # new user
 scripts/user_access.sh grant someone@lab.edu data-portal    # existing user, e.g. an RNAnix user
 ```
 
-The shared pool's invite email is branded for RNAnix and links to `https://rna-atlas.org/login`,
-not this portal. Send new users the portal's URL (`terraform output -raw portal_url`) yourself.
+An invite whose first `--apps` entry is `data-portal` gets the portal's own email, which links to
+this portal's `/login.html`. Any other first app gets the pool's default RNAnix email. The link
+comes from `invite_sites` in `rna_auth_aws_daslab`'s `terraform/auth/invite_sites.auto.tfvars`;
+update it there if `terraform output -raw portal_url` changes.
 
 State is local, in `terraform.tfstate.d/<workspace>/`. It holds the DB password. Back it up, and
 don't commit it.
