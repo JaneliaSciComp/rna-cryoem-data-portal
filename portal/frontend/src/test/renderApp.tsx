@@ -7,20 +7,23 @@ import { createAppRouter } from '../router';
 export function renderApp(path: string) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const router = createAppRouter(createMemoryHistory({ initialEntries: [path] }));
-  return render(
+  render(
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
     </QueryClientProvider>
   );
+  return router;
 }
 
-// Answers fetch(url) with routes[url] as JSON; anything else is a 404.
+// Answers fetch(url) with routes[url] as JSON, or else routes[url without its query string];
+// anything else is a 404.
 export function mockFetch(routes: Record<string, unknown>) {
-  const fetchMock = vi.fn(async (url: string) =>
-    url in routes
-      ? new Response(JSON.stringify(routes[url]), { status: 200, headers: { 'Content-Type': 'application/json' } })
-      : new Response('', { status: 404 })
-  );
+  const fetchMock = vi.fn(async (url: string) => {
+    const key = url in routes ? url : url.split('?')[0];
+    return key in routes
+      ? new Response(JSON.stringify(routes[key]), { status: 200, headers: { 'Content-Type': 'application/json' } })
+      : new Response('', { status: 404 });
+  });
   vi.stubGlobal('fetch', fetchMock);
   return fetchMock;
 }

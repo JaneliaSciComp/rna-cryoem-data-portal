@@ -1,5 +1,6 @@
 import { AppBar, Container, Toolbar, Typography } from '@mui/material';
 import { Link, Outlet, type RouterHistory, createRootRoute, createRoute, createRouter } from '@tanstack/react-router';
+import { parseMoleculeSearch } from './api';
 import { MoleculePage } from './pages/MoleculePage';
 import { MoleculesPage } from './pages/MoleculesPage';
 
@@ -21,7 +22,13 @@ function Layout() {
 }
 
 const rootRoute = createRootRoute({ component: Layout });
-const indexRoute = createRoute({ getParentRoute: () => rootRoute, path: '/', component: MoleculesPage });
+// The search, filters, sort, and page live in the URL, so a link shows the same results.
+const indexRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/',
+  validateSearch: parseMoleculeSearch,
+  component: MoleculesPage
+});
 const moleculeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/molecules/$moleculeId',
