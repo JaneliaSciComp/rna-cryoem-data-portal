@@ -72,10 +72,24 @@ don't commit it.
   `/aws/lambda/us-east-1.rna-portal-<workspace>`, in the region nearest the viewer.
 - Shell on the instance: `aws ssm start-session --target <instance-id>`. Mounts:
   `systemctl status rclone-data rclone-caches`.
-- New image tag: push it, change `image_tag`, apply.
+- New image tag: see [Releasing](#releasing).
 - New AMI: `terraform apply -replace=aws_launch_template.ecs -var-file=dev.tfvars`.
 - `terraform destroy` can fail on the edge Lambda while CloudFront deletes its replicas (up to a
   few hours). Rerun it later.
+
+## Releasing
+
+Tag images with the short SHA of a commit on `main`. Branch SHAs disappear after a squash merge
+or rebase. push-images.sh refuses to run with uncommitted changes.
+
+```bash
+git switch main && git pull
+scripts/push-images.sh dev $(git rev-parse --short HEAD) <data_portal_client_id>
+# set image_tag in dev.tfvars to that SHA
+terraform apply -var-file=dev.tfvars
+```
+
+To roll back, set `image_tag` to the previous SHA and apply.
 
 ## Known ceilings
 
