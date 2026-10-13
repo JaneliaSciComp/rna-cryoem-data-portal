@@ -14,7 +14,7 @@ terraform {
 provider "aws" {
   region = var.region
   default_tags {
-    tags = { Project = "rna-data-portal", Environment = terraform.workspace }
+    tags = { Project = "rna-data-portal", Environment = terraform.workspace, PROJECT = "das-portal", DEVELOPER = "truhlara", STAGE = terraform.workspace }
   }
 }
 
@@ -23,7 +23,7 @@ provider "aws" {
   alias  = "us_east_1"
   region = "us-east-1"
   default_tags {
-    tags = { Project = "rna-data-portal", Environment = terraform.workspace }
+    tags = { Project = "rna-data-portal", Environment = terraform.workspace, PROJECT = "das-portal", DEVELOPER = "truhlara", STAGE = terraform.workspace }
   }
 }
 

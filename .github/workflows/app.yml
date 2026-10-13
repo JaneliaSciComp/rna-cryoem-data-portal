@@ -3,9 +3,7 @@ name: app
 on:
   push:
     branches: [main]
-    paths: ["portal/**", ".github/workflows/app.yml"]
   pull_request:
-    paths: ["portal/**", ".github/workflows/app.yml"]
 
 jobs:
   backend:

@@ -10,6 +10,8 @@ ws=$1 tag=$2 client_id=$3
 region=${AWS_REGION:-us-east-2}
 mrcng=ghcr.io/janeliascicomp/mrc-ng-server:0.1.8
 repo_root=$(cd "$(dirname "$0")/../../.." && pwd)
+# The tag should name the commit the images were built from, so uncommitted changes can't ride along.
+[ -z "$(git -C "$repo_root" status --porcelain)" ] || { echo "commit or stash changes first" >&2; exit 1; }
 registry=$(aws sts get-caller-identity --query Account --output text).dkr.ecr.$region.amazonaws.com
 repo=$registry/rna-portal-$ws
 
