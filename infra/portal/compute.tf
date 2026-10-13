@@ -160,7 +160,7 @@ resource "aws_iam_role_policy_attachment" "execution" {
 data "aws_iam_policy_document" "execution" {
   statement {
     actions   = ["secretsmanager:GetSecretValue"]
-    resources = [aws_secretsmanager_secret.db_url.arn]
+    resources = [aws_secretsmanager_secret.db_url.arn, aws_secretsmanager_secret.typesense_api_key.arn]
   }
 }
 
@@ -177,10 +177,15 @@ locals {
   catalog_env = [
     { name = "CATALOG_DATA_ROOT", value = "/data" },
     { name = "CATALOG_THUMBNAIL_DIR", value = "/caches/thumbnails" },
+    # The portal task's typesense container. The scanner task shares the host network.
+    { name = "CATALOG_TYPESENSE_URL", value = "http://127.0.0.1:8108" },
   ]
-  catalog_secrets = [{ name = "CATALOG_DB_URL", valueFrom = aws_secretsmanager_secret.db_url.arn }]
+  catalog_secrets = [
+    { name = "CATALOG_DB_URL", valueFrom = aws_secretsmanager_secret.db_url.arn },
+    { name = "CATALOG_TYPESENSE_API_KEY", valueFrom = aws_secretsmanager_secret.typesense_api_key.arn },
+  ]
 
-  log = { for c in ["nginx", "api", "mrc-ng-server", "scanner"] : c => {
+  log = { for c in ["nginx", "api", "mrc-ng-server", "typesense", "scanner"] : c => {
     logDriver = "awslogs"
     options = {
       "awslogs-group"         = aws_cloudwatch_log_group.portal.name
@@ -203,6 +208,12 @@ resource "aws_ecs_task_definition" "portal" {
   volume {
     name      = "caches"
     host_path = "/mnt/caches"
+  }
+  # The search index, on the instance's own disk: Typesense needs a real filesystem, not the
+  # rclone S3 mount. A new instance starts with no index until the next scan rebuilds it.
+  volume {
+    name      = "search"
+    host_path = "/var/lib/rna-portal/typesense"
   }
 
   container_definitions = jsonencode([
@@ -247,6 +258,23 @@ resource "aws_ecs_task_definition" "portal" {
         { sourceVolume = "caches", containerPath = "/caches", readOnly = true },
       ]
       logConfiguration = local.log["mrc-ng-server"]
+    },
+    {
+      # The molecule search index (portal/backend/src/rna_portal/search.py), which the scanner
+      # rebuilds from the catalog after every scan.
+      name              = "typesense"
+      image             = local.image["typesense"]
+      essential         = true
+      memoryReservation = 256
+      environment = [
+        { name = "TYPESENSE_DATA_DIR", value = "/var/lib/typesense" },
+        { name = "TYPESENSE_API_ADDRESS", value = "127.0.0.1" },
+        { name = "TYPESENSE_API_PORT", value = "8108" },
+        { name = "TYPESENSE_PEERING_ADDRESS", value = "127.0.0.1" },
+      ]
+      secrets          = [{ name = "TYPESENSE_API_KEY", valueFrom = aws_secretsmanager_secret.typesense_api_key.arn }]
+      mountPoints      = [{ sourceVolume = "search", containerPath = "/var/lib/typesense", readOnly = false }]
+      logConfiguration = local.log["typesense"]
     },
   ])
 }

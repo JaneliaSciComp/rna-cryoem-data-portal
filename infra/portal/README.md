@@ -8,6 +8,7 @@ cookie, group `app:data-portal`) before it reaches the internal ALB. Design:
 ```
 CloudFront + edge_auth -> VPC origin -> internal ALB -> ECS task (host network)
                                                           nginx:8080 -> api:8000, mrc-ng-server:8001
+                                                          api, scanner -> typesense:8108 (127.0.0.1)
                                                           (nginx serves the app and Neuroglancer)
 EC2 host: /mnt/data   (rclone, read-only: the Drive folder, or s3://<bucket>/sample-data/)
           /mnt/caches (rclone: s3://<bucket>/caches/)
@@ -21,7 +22,7 @@ RDS Postgres (CATALOG_DB_URL in Secrets Manager). EventBridge runs the scanner t
   [`rna_auth_aws_daslab`](https://github.com/JaneliaSciComp/rna_auth_aws_daslab), applied with
   its `data_portal` client and `app:data-portal` group. Its `terraform/auth` outputs
   `user_pool_id` and `data_portal_client_id` go in the tfvars.
-- Docker (push-images.sh builds the api and nginx images and mirrors the public mrc-ng-server image).
+- Docker (push-images.sh builds the api and nginx images and mirrors the public mrc-ng-server and Typesense images).
 
 ## Deploy a workspace
 
@@ -68,6 +69,8 @@ don't commit it.
 ## Operating
 
 - Run the scanner now: `aws ecs run-task --cluster $(terraform output -raw cluster) --launch-type EC2 --task-definition $(terraform output -raw scanner_task_definition)`.
+  Do this after the first deploy and after the instance is replaced: until a scan rebuilds the
+  search index, the molecule list answers 503.
 - Logs: CloudWatch group `/ecs/rna-portal-<workspace>`. edge_auth logs land in
   `/aws/lambda/us-east-1.rna-portal-<workspace>`, in the region nearest the viewer.
 - Shell on the instance: `aws ssm start-session --target <instance-id>`. Mounts:
@@ -96,3 +99,5 @@ To roll back, set `image_tag` to the previous SHA and apply.
 - One instance, no HA. The ASG replaces a dead one; RDS and S3 hold the state.
 - The scanner lock is per host (`flock`). It needs a DB lock if the ASG ever grows past 1.
 - mrc-ng-server serves maps at full resolution only (no `mrc-pyramid build`).
+- The search index lives on the instance's disk and is rebuilt from scratch after every scan. Fine
+  for hundreds of molecules; index incrementally if scans start to drag.

@@ -2,13 +2,15 @@
 # Usage: push-images.sh <workspace> <tag> <cognito-client-id>
 #
 # Builds the portal backend (api and scanner) and nginx images from this repo, mirrors
-# mrc-ng-server, and pushes all three to this workspace's ECR repos under <tag>.
+# mrc-ng-server and Typesense, and pushes all four to this workspace's ECR repos under <tag>.
 # Needs AWS credentials and Docker.
 set -euo pipefail
 [ $# -eq 3 ] || { echo "usage: $0 <workspace> <tag> <cognito-client-id>" >&2; exit 2; }
 ws=$1 tag=$2 client_id=$3
 region=${AWS_REGION:-us-east-2}
 mrcng=ghcr.io/janeliascicomp/mrc-ng-server:0.1.8
+# The same version as portal/pixi.toml (db-up) and the CI service container.
+typesense=typesense/typesense:27.1
 repo_root=$(cd "$(dirname "$0")/../../.." && pwd)
 # The tag should name the commit the images were built from, so uncommitted changes can't ride along.
 [ -z "$(git -C "$repo_root" status --porcelain)" ] || { echo "commit or stash changes first" >&2; exit 1; }
@@ -29,3 +31,7 @@ docker push "$repo/nginx:$tag"
 docker pull --platform linux/amd64 "$mrcng"
 docker tag "$mrcng" "$repo/mrc-ng-server:$tag"
 docker push "$repo/mrc-ng-server:$tag"
+
+docker pull --platform linux/amd64 "$typesense"
+docker tag "$typesense" "$repo/typesense:$tag"
+docker push "$repo/typesense:$tag"
