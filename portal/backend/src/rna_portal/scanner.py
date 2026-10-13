@@ -17,7 +17,7 @@ from pathlib import Path
 from sqlalchemy import Engine, delete, select
 from sqlalchemy.orm import Session
 
-from rna_portal import config, db, parsers
+from rna_portal import config, db, parsers, search
 from rna_portal.classify import classify
 from rna_portal.models import Kind, Molecule, MoleculeFile, Source
 from rna_portal.render import render_thumbnail
@@ -214,10 +214,25 @@ def main() -> int:
         "scan complete: added=%d updated=%d unchanged=%d deleted=%d failed=%d",
         len(r.added), len(r.updated), len(r.unchanged), len(r.deleted), len(r.failed),
     )
+    indexed = _reindex()
     log.info("warmed %d files", len(warm(db.engine(), config.data_root())))
     if r.failed:
         log.error("failed molecules: %s", ", ".join(r.failed))
-    return 1 if r.failed else 0
+    return 1 if r.failed or not indexed else 0
+
+
+def _reindex() -> bool:
+    """Rebuild the search index from the catalog. A failure keeps the previous index and is
+    reported in the exit code, but doesn't stop the warm."""
+    if config.typesense_url() is None:
+        log.warning("CATALOG_TYPESENSE_URL is not set; search index not rebuilt")
+        return True
+    try:
+        log.info("indexed %d molecules for search", search.reindex(db.engine()))
+    except Exception:
+        log.exception("search reindex failed; search keeps the previous index")
+        return False
+    return True
 
 
 if __name__ == "__main__":

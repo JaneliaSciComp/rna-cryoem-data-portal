@@ -29,3 +29,14 @@ def rclone_socket() -> Path | None:
     mount (tests, local runs): nothing to refresh."""
     path = os.environ.get("CATALOG_RCLONE_SOCKET")
     return Path(path) if path else None
+
+
+def typesense_url() -> str | None:
+    """The search server, http://host:8108. Unset: the API's molecule list answers 503 and the
+    scanner doesn't index."""
+    return os.environ.get("CATALOG_TYPESENSE_URL") or None
+
+
+def typesense_api_key() -> str:
+    """Required once CATALOG_TYPESENSE_URL is set."""
+    return os.environ["CATALOG_TYPESENSE_API_KEY"]
