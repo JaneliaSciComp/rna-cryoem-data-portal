@@ -112,6 +112,19 @@ def test_changed_file_updates_the_molecule(engine, root, thumbs):
     assert molecule(engine, "Mol9_gRNAde").resolution_a == pytest.approx(2.5)
 
 
+def test_newer_parser_rereads_unchanged_molecules(engine, root, thumbs, monkeypatch):
+    scan(engine, root, thumbs, FakeRender())
+    monkeypatch.setattr(parsers, "PARSER_VERSION", parsers.PARSER_VERSION + 1)
+    render = FakeRender()
+
+    result = scan(engine, root, thumbs, render)
+
+    assert result.updated == ["Mol23_TrpHolo", "Mol9_gRNAde"]
+    assert molecule(engine, "Mol9_gRNAde").parsed_version == parsers.PARSER_VERSION
+    assert render.calls == []  # the thumbnails don't depend on the parsers
+    assert scan(engine, root, thumbs, FakeRender()).unchanged == ["Mol23_TrpHolo", "Mol9_gRNAde"]
+
+
 def test_deleted_file_removes_its_row(engine, root, thumbs):
     scan(engine, root, thumbs, FakeRender())
     (root / "Mol9_gRNAde/PDB_deposit/emd_75574.map").unlink()

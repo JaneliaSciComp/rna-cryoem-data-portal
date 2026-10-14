@@ -108,7 +108,8 @@ def _sync_molecule(session: Session, root: Path, thumbnails: Path, folder: str, 
             row.kind, row.source, row.size, row.mtime = kind, source, size, mtime
             changed = True
 
-    if changed:
+    stale = changed or molecule.parsed_version < parsers.PARSER_VERSION
+    if stale:
         molecule.name = parsers.molecule_name(folder)
         deposited = [root / p for p, (k, s, *_) in found.items() if k == Kind.MODEL and s == Source.DEPOSITED]
         molecule.pdb_id = next((i for i in map(parsers.pdb_id, deposited) if i), None)
@@ -117,12 +118,13 @@ def _sync_molecule(session: Session, root: Path, thumbnails: Path, folder: str, 
         molecule.resolution_a = min(resolutions) if resolutions else None
         nomask = [r for r in map(parsers.nomask_resolution_a, logs) if r is not None]
         molecule.nomask_resolution_a = min(nomask) if nomask else None
+        molecule.parsed_version = parsers.PARSER_VERSION
         molecule.scanned_at = datetime.now(timezone.utc)
 
     thumbnail_missing = molecule.thumbnail_path is None or not (thumbnails / molecule.thumbnail_path).is_file()
     if changed or thumbnail_missing:
         molecule.thumbnail_path = _thumbnail(root, thumbnails, folder, found, render)
-    return status if changed else "unchanged"
+    return status if stale else "unchanged"
 
 
 def _thumbnail(root: Path, thumbnails: Path, folder: str, found: Found, render: Renderer) -> str | None:

@@ -3,6 +3,10 @@ import json
 import re
 from pathlib import Path
 
+# Bump when a change here would give existing molecules different facts: the next scan then
+# re-reads every molecule stamped with an older version, even if its files haven't changed.
+PARSER_VERSION = 1
+
 _MOL_PREFIX = re.compile(r"^mol\d+_", re.IGNORECASE)
 _PDB_ID = re.compile(r"[0-9][A-Za-z0-9]{3}")
 # In a file name, also require a letter, so dates and counters (fold_2026_01_24) don't match.
