@@ -17,7 +17,7 @@ from pathlib import Path
 from sqlalchemy import Engine, delete, select
 from sqlalchemy.orm import Session
 
-from rna_portal import config, db, parsers
+from rna_portal import config, db, parsers, search
 from rna_portal.classify import classify
 from rna_portal.models import Kind, Molecule, MoleculeFile, Source
 from rna_portal.render import render_thumbnail
@@ -108,21 +108,23 @@ def _sync_molecule(session: Session, root: Path, thumbnails: Path, folder: str, 
             row.kind, row.source, row.size, row.mtime = kind, source, size, mtime
             changed = True
 
-    if changed:
+    stale = changed or molecule.parsed_version < parsers.PARSER_VERSION
+    if stale:
         molecule.name = parsers.molecule_name(folder)
         deposited = [root / p for p, (k, s, *_) in found.items() if k == Kind.MODEL and s == Source.DEPOSITED]
         molecule.pdb_id = next((i for i in map(parsers.pdb_id, deposited) if i), None)
-        resolutions = [
-            r for r in (parsers.resolution_a(root / p) for p, (k, *_) in found.items() if k == Kind.LOG)
-            if r is not None
-        ]
+        logs = [root / p for p, (k, *_) in found.items() if k == Kind.LOG]
+        resolutions = [r for r in map(parsers.resolution_a, logs) if r is not None]
         molecule.resolution_a = min(resolutions) if resolutions else None
+        nomask = [r for r in map(parsers.nomask_resolution_a, logs) if r is not None]
+        molecule.nomask_resolution_a = min(nomask) if nomask else None
+        molecule.parsed_version = parsers.PARSER_VERSION
         molecule.scanned_at = datetime.now(timezone.utc)
 
     thumbnail_missing = molecule.thumbnail_path is None or not (thumbnails / molecule.thumbnail_path).is_file()
     if changed or thumbnail_missing:
         molecule.thumbnail_path = _thumbnail(root, thumbnails, folder, found, render)
-    return status if changed else "unchanged"
+    return status if stale else "unchanged"
 
 
 def _thumbnail(root: Path, thumbnails: Path, folder: str, found: Found, render: Renderer) -> str | None:
@@ -214,10 +216,25 @@ def main() -> int:
         "scan complete: added=%d updated=%d unchanged=%d deleted=%d failed=%d",
         len(r.added), len(r.updated), len(r.unchanged), len(r.deleted), len(r.failed),
     )
+    indexed = _reindex()
     log.info("warmed %d files", len(warm(db.engine(), config.data_root())))
     if r.failed:
         log.error("failed molecules: %s", ", ".join(r.failed))
-    return 1 if r.failed else 0
+    return 1 if r.failed or not indexed else 0
+
+
+def _reindex() -> bool:
+    """Rebuild the search index from the catalog. A failure keeps the previous index and is
+    reported in the exit code, but doesn't stop the warm."""
+    if config.typesense_url() is None:
+        log.warning("CATALOG_TYPESENSE_URL is not set; search index not rebuilt")
+        return True
+    try:
+        log.info("indexed %d molecules for search", search.reindex(db.engine()))
+    except Exception:
+        log.exception("search reindex failed; search keeps the previous index")
+        return False
+    return True
 
 
 if __name__ == "__main__":

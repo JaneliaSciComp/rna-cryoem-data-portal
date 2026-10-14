@@ -29,10 +29,15 @@ ovito = "*"
 
 [tasks]
 # One Postgres: the tests own the `postgres` database (they drop its schema), local runs use `portal`.
+# One Typesense: the tests delete its molecules collections, so `pixi run reindex` after testing.
 test = { cmd = "pytest", cwd = "backend" }
-db-up = "docker start rna-portal-testdb 2>/dev/null || docker run -d --name rna-portal-testdb -p 55432:5432 -e POSTGRES_PASSWORD=test -e POSTGRES_DB=portal postgres:16-alpine"
+db-up = """
+docker start rna-portal-testdb 2>/dev/null || docker run -d --name rna-portal-testdb -p 55432:5432 -e POSTGRES_PASSWORD=test -e POSTGRES_DB=portal postgres:16-alpine
+docker start rna-portal-typesense 2>/dev/null || docker run -d --name rna-portal-typesense -p 58108:8108 typesense/typesense:27.1 --data-dir /tmp --api-key=test
+"""
 api = "uvicorn rna_portal.api:app --host 127.0.0.1 --port 8000"
 scan = "python -m rna_portal.scanner"
+reindex = "python -m rna_portal.search"
 
 [feature.frontend.dependencies]
 nodejs = "22.*"

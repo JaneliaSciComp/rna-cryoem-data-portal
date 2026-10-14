@@ -172,8 +172,8 @@ run "bad_image_rolls_back" {
 run "portal_containers" {
   command = apply
   assert {
-    condition     = toset([for c in jsondecode(aws_ecs_task_definition.portal.container_definitions) : c.name]) == toset(["nginx", "api", "mrc-ng-server"])
-    error_message = "The portal task runs nginx (with the app built in), the api, and mrc-ng-server."
+    condition     = toset([for c in jsondecode(aws_ecs_task_definition.portal.container_definitions) : c.name]) == toset(["nginx", "api", "mrc-ng-server", "typesense"])
+    error_message = "The portal task runs nginx (with the app built in), the api, mrc-ng-server, and typesense."
   }
   assert {
     condition = alltrue([
@@ -194,5 +194,19 @@ run "portal_containers" {
       for c in jsondecode(aws_ecs_task_definition.portal.container_definitions) : c.image if c.name == "api"
     ])
     error_message = "The scanner runs from the backend image."
+  }
+  assert {
+    condition = alltrue([
+      for c in concat(jsondecode(aws_ecs_task_definition.portal.container_definitions), jsondecode(aws_ecs_task_definition.scanner.container_definitions)) :
+      contains([for e in c.environment : e.value], "http://127.0.0.1:8108") if contains(["api", "scanner"], c.name)
+    ])
+    error_message = "The api and scanner reach typesense on the host network."
+  }
+  assert {
+    condition = one([
+      for c in jsondecode(aws_ecs_task_definition.portal.container_definitions) :
+      { for e in c.environment : e.name => e.value } if c.name == "typesense"
+    ])["TYPESENSE_API_ADDRESS"] == "127.0.0.1"
+    error_message = "typesense listens on localhost only."
   }
 }

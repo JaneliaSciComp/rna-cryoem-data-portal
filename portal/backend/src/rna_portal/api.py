@@ -7,16 +7,17 @@ development, no nginx) sends the file from here instead.
 """
 from collections.abc import Iterator
 from datetime import datetime
+from enum import StrEnum
 from pathlib import PurePosixPath
+from typing import Annotated, Literal
 from urllib.parse import quote
 
-from fastapi import Depends, FastAPI, HTTPException, Response
+from fastapi import Depends, FastAPI, HTTPException, Query, Response
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
-from sqlalchemy import select
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session
 
-from rna_portal import config, db
+from rna_portal import config, db, search
 from rna_portal.models import Kind, Molecule, MoleculeFile
 
 app = FastAPI(title="RNA AI CryoEM data portal")
@@ -56,18 +57,29 @@ class MoleculeSummary(BaseModel):
     scanned_at: datetime
 
 
+class MoleculePage(BaseModel):
+    found: int  # matches across all pages
+    molecules: list[MoleculeSummary]
+    # Matches per value, among this search's results: {"kinds": {"map": 3, ...}}
+    facets: dict[str, dict[str, int]]
+
+
+SortKey = StrEnum("SortKey", {k: k for k in search.SORT_FIELDS})
+
+
 class MoleculeDetail(BaseModel):
     id: str
     name: str
     pdb_id: str | None
     resolution_a: float | None
+    nomask_resolution_a: float | None
     thumbnail_url: str | None
     scanned_at: datetime
     files: list[FileOut]
 
 
-def _thumbnail_url(m: Molecule) -> str | None:
-    return f"/api/thumbnails/{quote(m.thumbnail_path)}" if m.thumbnail_path else None
+def _thumbnail_url(thumbnail_path: str | None) -> str | None:
+    return f"/api/thumbnails/{quote(thumbnail_path)}" if thumbnail_path else None
 
 
 def _file_out(f: MoleculeFile) -> FileOut:
@@ -84,21 +96,37 @@ def health() -> dict:
     return {"ok": True}
 
 
-@app.get("/molecules", response_model=list[MoleculeSummary])
-def list_molecules(session: Session = Depends(get_session)):
-    molecules = session.scalars(
-        select(Molecule).options(selectinload(Molecule.files)).order_by(Molecule.id)
-    ).all()
-    return [
-        MoleculeSummary(
-            id=m.id, name=m.name, pdb_id=m.pdb_id, resolution_a=m.resolution_a,
-            thumbnail_url=_thumbnail_url(m),
-            n_models=sum(f.kind == Kind.MODEL for f in m.files),
-            n_maps=sum(f.kind == Kind.MAP for f in m.files),
-            scanned_at=m.scanned_at,
+@app.get("/molecules", response_model=MoleculePage)
+def list_molecules(
+    q: Annotated[str | None, Query(max_length=200)] = None,
+    kind: Annotated[list[Kind], Query()] = [],
+    max_resolution: Annotated[float | None, Query(gt=0, allow_inf_nan=False)] = None,
+    sort: SortKey | None = None,
+    order: Literal["asc", "desc"] = "asc",
+    page: Annotated[int, Query(ge=1)] = 1,
+    per_page: Annotated[int, Query(ge=1, le=250)] = 10,
+):
+    """Search the molecules: q matches name, id, or PDB ID; each filter narrows the results.
+    Without a sort, the best text matches come first, then names A to Z."""
+    try:
+        r = search.search(
+            q=q, kinds=kind, max_resolution=max_resolution,
+            sort=sort, order=order, page=page, per_page=per_page,
         )
-        for m in molecules
-    ]
+    except search.SearchUnavailable as exc:
+        raise HTTPException(status_code=503, detail=f"search unavailable: {exc}")
+    return MoleculePage(
+        found=r["found"],
+        molecules=[
+            MoleculeSummary(
+                id=d["molecule_id"], name=d["name"], pdb_id=d.get("pdb_id"),
+                resolution_a=d.get("resolution_a"), thumbnail_url=_thumbnail_url(d.get("thumbnail_path")),
+                n_models=d["n_models"], n_maps=d["n_maps"], scanned_at=d["scanned_at"],
+            )
+            for d in (hit["document"] for hit in r["hits"])
+        ],
+        facets={f["field_name"]: {c["value"]: c["count"] for c in f["counts"]} for f in r["facet_counts"]},
+    )
 
 
 @app.get("/molecules/{molecule_id}", response_model=MoleculeDetail)
@@ -108,7 +136,8 @@ def get_molecule(molecule_id: str, session: Session = Depends(get_session)):
         raise HTTPException(status_code=404, detail="molecule not found")
     return MoleculeDetail(
         id=m.id, name=m.name, pdb_id=m.pdb_id, resolution_a=m.resolution_a,
-        thumbnail_url=_thumbnail_url(m), scanned_at=m.scanned_at,
+        nomask_resolution_a=m.nomask_resolution_a,
+        thumbnail_url=_thumbnail_url(m.thumbnail_path), scanned_at=m.scanned_at,
         files=[_file_out(f) for f in m.files],
     )
 

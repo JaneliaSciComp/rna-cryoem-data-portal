@@ -3,6 +3,10 @@ import json
 import re
 from pathlib import Path
 
+# Bump when a change here would give existing molecules different facts: the next scan then
+# re-reads every molecule stamped with an older version, even if its files haven't changed.
+PARSER_VERSION = 1
+
 _MOL_PREFIX = re.compile(r"^mol\d+_", re.IGNORECASE)
 _PDB_ID = re.compile(r"[0-9][A-Za-z0-9]{3}")
 # In a file name, also require a letter, so dates and counters (fold_2026_01_24) don't match.
@@ -37,6 +41,16 @@ def pdb_id(path: Path) -> str | None:
 def resolution_a(log_path: Path) -> float | None:
     """Final GSFSC resolution in Å from a cryoSPARC job's exported JSON log: the best
     `latest_summary_stats.fsc_info_best.radwn_final_A` across its output groups."""
+    return _best_fsc(log_path, "radwn_final_A")
+
+
+def nomask_resolution_a(log_path: Path) -> float | None:
+    """No-mask GSFSC resolution in Å from a cryoSPARC job's exported JSON log: the best
+    `latest_summary_stats.fsc_info_best.radwn_nomask_A` across its volume output groups."""
+    return _best_fsc(log_path, "radwn_nomask_A", group_type="volume")
+
+
+def _best_fsc(log_path: Path, key: str, group_type: str | None = None) -> float | None:
     try:
         doc = json.loads(log_path.read_text(errors="replace"))
     except (OSError, ValueError):
@@ -45,10 +59,10 @@ def resolution_a(log_path: Path) -> float | None:
         return None
     values = []
     for group in doc.get("output_result_groups") or []:
-        if not isinstance(group, dict):
+        if not isinstance(group, dict) or (group_type and group.get("type") != group_type):
             continue
         stats = group.get("latest_summary_stats") or {}
-        value = (stats.get("fsc_info_best") or {}).get("radwn_final_A")
+        value = (stats.get("fsc_info_best") or {}).get(key)
         if isinstance(value, (int, float)):
             values.append(float(value))
     return min(values) if values else None

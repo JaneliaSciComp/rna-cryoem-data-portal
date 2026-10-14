@@ -75,6 +75,7 @@ def test_first_scan_catalogs_molecules(engine, root, thumbs):
     assert result.added == ["Mol23_TrpHolo", "Mol9_gRNAde"]
     m = molecule(engine, "Mol9_gRNAde")
     assert (m.name, m.pdb_id, m.resolution_a) == ("gRNAde", "10ZT", pytest.approx(2.97))
+    assert m.nomask_resolution_a == 3.5
     assert m.thumbnail_path == "Mol9_gRNAde.png" and (thumbs / "Mol9_gRNAde.png").is_file()
     assert {(f.path.split("/")[-1], f.kind, f.source) for f in m.files} == {
         ("10ZT.pdb", "model", "deposited"),
@@ -109,6 +110,19 @@ def test_changed_file_updates_the_molecule(engine, root, thumbs):
 
     assert result.updated == ["Mol9_gRNAde"]
     assert molecule(engine, "Mol9_gRNAde").resolution_a == pytest.approx(2.5)
+
+
+def test_newer_parser_rereads_unchanged_molecules(engine, root, thumbs, monkeypatch):
+    scan(engine, root, thumbs, FakeRender())
+    monkeypatch.setattr(parsers, "PARSER_VERSION", parsers.PARSER_VERSION + 1)
+    render = FakeRender()
+
+    result = scan(engine, root, thumbs, render)
+
+    assert result.updated == ["Mol23_TrpHolo", "Mol9_gRNAde"]
+    assert molecule(engine, "Mol9_gRNAde").parsed_version == parsers.PARSER_VERSION
+    assert render.calls == []  # the thumbnails don't depend on the parsers
+    assert scan(engine, root, thumbs, FakeRender()).unchanged == ["Mol23_TrpHolo", "Mol9_gRNAde"]
 
 
 def test_deleted_file_removes_its_row(engine, root, thumbs):

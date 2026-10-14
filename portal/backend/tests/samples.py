@@ -16,6 +16,7 @@ def cryosparc_log(resolution: float) -> str:
                 {"uid": "J300-G0", "summary": {}},
                 {
                     "uid": "J300-G1",
+                    "type": "volume",
                     "latest_summary_stats": {
                         "fsc_info_best": {"radwn_final_A": resolution, "radwn_nomask_A": 3.5}
                     },

@@ -1,7 +1,8 @@
-"""Tests run against real Postgres: `pixi run db-up` locally, a service container in CI."""
+"""Tests run against real Postgres and Typesense: `pixi run db-up` locally, service containers in CI."""
 import os
 import time
 
+import httpx
 import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError
@@ -41,3 +42,37 @@ def engine(_db_ready, monkeypatch):
     yield eng
     eng.dispose()
     db.engine.cache_clear()
+
+
+# A test-only variable, never CATALOG_TYPESENSE_URL: the tests delete every molecules collection.
+TEST_TYPESENSE = os.environ.get("TEST_TYPESENSE_URL", "http://localhost:58108")
+TEST_TYPESENSE_KEY = os.environ.get("TEST_TYPESENSE_API_KEY", "test")
+
+
+@pytest.fixture
+def typesense(monkeypatch):
+    """An empty Typesense: `pixi run db-up` locally, a service container in CI. CATALOG_TYPESENSE_*
+    point at it for code under test. Yields an httpx client for it."""
+    monkeypatch.setenv("CATALOG_TYPESENSE_URL", TEST_TYPESENSE)
+    monkeypatch.setenv("CATALOG_TYPESENSE_API_KEY", TEST_TYPESENSE_KEY)
+    from rna_portal import search
+
+    search.client.cache_clear()
+    c = httpx.Client(base_url=TEST_TYPESENSE, headers={"X-TYPESENSE-API-KEY": TEST_TYPESENSE_KEY})
+    deadline = time.monotonic() + 30
+    while True:
+        try:
+            if c.get("/health").json().get("ok"):
+                break
+        except httpx.HTTPError:
+            pass
+        if time.monotonic() > deadline:
+            raise RuntimeError(f"Typesense at {TEST_TYPESENSE} isn't healthy")
+        time.sleep(1)
+    c.delete(f"/aliases/{search.ALIAS}")
+    for coll in c.get("/collections").json():
+        if coll["name"].startswith(f"{search.ALIAS}_"):
+            c.delete(f"/collections/{coll['name']}")
+    yield c
+    c.close()
+    search.client.cache_clear()

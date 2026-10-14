@@ -16,6 +16,13 @@ jobs:
         ports: ["55432:5432"]
         options: >-
           --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+      # The test fixture waits for /health; the image has no curl for a health-cmd.
+      typesense:
+        image: typesense/typesense:27.1
+        env:
+          TYPESENSE_API_KEY: test
+          TYPESENSE_DATA_DIR: /tmp
+        ports: ["58108:8108"]
     defaults:
       run:
         working-directory: portal

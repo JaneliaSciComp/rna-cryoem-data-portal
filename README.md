@@ -15,13 +15,13 @@ A web portal for browsing RNA cryo-EM molecules.
 ## How it works
 
 ```
-CloudFront + edge_auth -> internal ALB -> ECS task: nginx -> api (FastAPI)
+CloudFront + edge_auth -> internal ALB -> ECS task: nginx -> api (FastAPI) -> typesense (search)
                                                           -> mrc-ng-server (maps for Neuroglancer)
-                                        scanner task (EventBridge schedule) -> RDS Postgres
+                                        scanner task (EventBridge schedule) -> RDS Postgres, typesense
 ```
 
-- **Scanner** (`rna_portal.scanner`): treats each top-level folder of the data root as one molecule. It catalogs the files it recognizes, reads PDB IDs and cryoSPARC resolutions, renders a thumbnail with OVITO. A root that can't be listed or is empty leaves the catalog unchanged.
-- **API** (`rna_portal.api`): serves `/molecules`, `/molecules/{id}`, `/files/{id}`, and `/thumbnails/...`. nginx mounts it at `/api`. File downloads go out through nginx with `X-Accel-Redirect`, so only cataloged files can be fetched.
+- **Scanner** (`rna_portal.scanner`): treats each top-level folder of the data root as one molecule. It catalogs the files it recognizes, reads PDB IDs and cryoSPARC resolutions, renders a thumbnail with OVITO. A root that can't be listed or is empty leaves the catalog unchanged. After each scan it rebuilds the Typesense search index from the catalog.
+- **API** (`rna_portal.api`): serves `/molecules`, `/molecules/{id}`, `/files/{id}`, and `/thumbnails/...`. `/molecules` searches, filters, sorts, and pages through Typesense (`rna_portal.search`); without Typesense it answers 503. nginx mounts it at `/api`. File downloads go out through nginx with `X-Accel-Redirect`, so only cataloged files can be fetched.
 - **Auth**: users sign in with the shared RNA Atlas Cognito pool from [`rna_auth_aws_daslab`](https://github.com/JaneliaSciComp/rna_auth_aws_daslab). They need the `app:data-portal` group.
 
 ### Data layout
@@ -54,8 +54,8 @@ cp .env.example .env   # then point CATALOG_DATA_ROOT at your copy of the Drive 
 Database setup:
 
 ```bash
-pixi run db-up  # start the Postgres container in Docker
-pixi run scan   # scan the dev data directory to populate the DB
+pixi run db-up  # start the Postgres and Typesense containers in Docker
+pixi run scan   # scan the dev data directory to populate the DB and the search index
 ```
 
 To start the api service:
@@ -72,16 +72,18 @@ pixi run frontend        # http://localhost:5173; runs npm ci first when the loc
 
 Note: Everything works in the frontend except Neuroglancer, which needs mrc-ng-server. Files (gallery images, Mol* models, downloads) work because `.env.example` sets `CATALOG_SERVE_FILES=1`, so the API sends them itself instead of handing them to nginx.
 
-When you're done working, stop Postgres. `pixi run db-up` starts the same container again, catalog intact:
+The tests empty the search index. Run `pixi run reindex` to rebuild it from the catalog without scanning.
+
+When you're done working, stop the containers. `pixi run db-up` starts them again, catalog and index intact:
 
 ```bash
-docker stop rna-portal-testdb
+docker stop rna-portal-testdb rna-portal-typesense
 ```
 
-To delete it and its data instead (the next `pixi run db-up` starts empty; `pixi run scan` rebuilds the catalog):
+To delete them and their data instead (the next `pixi run db-up` starts empty; `pixi run scan` rebuilds the catalog):
 
 ```bash
-docker rm -f rna-portal-testdb
+docker rm -f rna-portal-testdb rna-portal-typesense
 ```
 
 ### Running tests in local development
@@ -89,7 +91,7 @@ docker rm -f rna-portal-testdb
 Run backend and frontend tests:
 
 ```bash
-pixi run db-up  # if the postgres container isn't already running
+pixi run db-up  # if the Postgres and Typesense containers aren't already running
 pixi run test
 pixi run test-frontend
 ```
@@ -113,6 +115,8 @@ The backend reads these environment variables (`rna_portal/config.py`):
 | `CATALOG_DATA_ROOT` | `/data` | The data mount, read-only |
 | `CATALOG_THUMBNAIL_DIR` | `/caches/thumbnails` | Where the scanner writes thumbnails |
 | `CATALOG_RCLONE_SOCKET` | unset | rclone remote-control socket; the scanner refreshes listings through it |
+| `CATALOG_TYPESENSE_URL` | unset | Typesense, `http://host:8108`. Unset: `/molecules` answers 503 and the scanner skips indexing |
+| `CATALOG_TYPESENSE_API_KEY` | required with the URL | Typesense admin key |
 | `CATALOG_SERVE_FILES` | unset | `1` for local development: the API sends file bodies itself, since there's no nginx to follow its `X-Accel-Redirect` |
 
 ## Deployment

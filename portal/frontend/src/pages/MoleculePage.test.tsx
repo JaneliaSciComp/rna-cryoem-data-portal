@@ -11,7 +11,7 @@ const f = (id: number, path: string, kind: string, source: string, size = 1000) 
 });
 
 const MOL9 = {
-  id: 'Mol9_gRNAde', name: 'gRNAde', pdb_id: '10ZT', resolution_a: 2.97,
+  id: 'Mol9_gRNAde', name: 'gRNAde', pdb_id: '10ZT', resolution_a: 2.97, nomask_resolution_a: 3.5,
   thumbnail_url: null, scanned_at: '2026-10-01T12:00:00Z',
   files: [
     f(1, 'Mol9_gRNAde/AlphaFold/model_0.cif', 'model', 'predicted'),
@@ -28,6 +28,7 @@ test('shows the molecule', async () => {
   renderApp('/molecules/Mol9_gRNAde');
 
   expect(await screen.findByRole('heading', { name: 'gRNAde' })).toBeInTheDocument();
+  expect(screen.getByText(/Resolution: 2\.97 Å · No mask: 3\.50 Å/)).toBeInTheDocument();
   // The picker opens on the deposited model.
   expect(screen.getByRole('combobox', { name: 'Model' })).toHaveTextContent('Deposited: 10ZT.pdb');
 
