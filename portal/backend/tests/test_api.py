@@ -28,7 +28,7 @@ def client(engine, typesense, tmp_path, monkeypatch):
     with Session(engine) as s:
         s.add_all([
             Molecule(
-                id="Mol9_gRNAde", name="gRNAde", pdb_id="10ZT", resolution_a=2.97,
+                id="Mol9_gRNAde", name="gRNAde", pdb_id="10ZT", resolution_a=2.97, nomask_resolution_a=3.5,
                 thumbnail_path="Mol9_gRNAde.png", scanned_at=NOW,
                 files=[
                     f("Mol9_gRNAde/PDB_deposit/10ZT.pdb", "model", "deposited"),
@@ -142,6 +142,7 @@ def test_search_unavailable_is_503(client, monkeypatch):
 
 def test_molecule_detail(client):
     body = client.get("/molecules/Mol9_gRNAde").json()
+    assert body["nomask_resolution_a"] == 3.5
     by_name = {x["name"]: x for x in body["files"]}
     pdb = by_name["10ZT.pdb"]
     assert (pdb["kind"], pdb["source"], pdb["path"]) == ("model", "deposited", "Mol9_gRNAde/PDB_deposit/10ZT.pdb")

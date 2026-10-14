@@ -33,6 +33,7 @@ class Molecule(Base):
     name: Mapped[str] = mapped_column(Text)
     pdb_id: Mapped[str | None] = mapped_column(Text)
     resolution_a: Mapped[float | None] = mapped_column(Float)
+    nomask_resolution_a: Mapped[float | None] = mapped_column(Float)
     thumbnail_path: Mapped[str | None] = mapped_column(Text)  # relative to the thumbnail dir
     scanned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # last change
     files: Mapped[list["MoleculeFile"]] = relationship(

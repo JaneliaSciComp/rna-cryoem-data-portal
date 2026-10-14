@@ -1,6 +1,8 @@
+import json
+
 import pytest
 
-from rna_portal.parsers import molecule_name, pdb_id, resolution_a
+from rna_portal.parsers import molecule_name, nomask_resolution_a, pdb_id, resolution_a
 from samples import cryosparc_log, header_line
 
 
@@ -47,6 +49,16 @@ def test_resolution_from_cryosparc_log(tmp_path):
     p = tmp_path / "cryosparc_P93_J300_json.log"
     p.write_text(cryosparc_log(2.9663609005244287))
     assert resolution_a(p) == pytest.approx(2.9664, abs=1e-4)
+    assert nomask_resolution_a(p) == 3.5
+
+
+def test_nomask_resolution_reads_only_volume_groups(tmp_path):
+    p = tmp_path / "job.log"
+    fsc = {"latest_summary_stats": {"fsc_info_best": {"radwn_nomask_A": 3.1}}}
+    p.write_text(json.dumps({"output_result_groups": [{"type": "mask", **fsc}, {"type": "volume", **fsc}]}))
+    assert nomask_resolution_a(p) == 3.1
+    p.write_text(json.dumps({"output_result_groups": [{"type": "mask", **fsc}]}))
+    assert nomask_resolution_a(p) is None
 
 
 @pytest.mark.parametrize(
@@ -57,3 +69,4 @@ def test_resolution_absent(tmp_path, content):
     p = tmp_path / "job.log"
     p.write_text(content)
     assert resolution_a(p) is None
+    assert nomask_resolution_a(p) is None

@@ -81,7 +81,10 @@ export type MoleculeFile = {
   url: string;
 };
 
-export type MoleculeDetail = Omit<MoleculeSummary, 'n_models' | 'n_maps'> & { files: MoleculeFile[] };
+export type MoleculeDetail = Omit<MoleculeSummary, 'n_models' | 'n_maps'> & {
+  nomask_resolution_a: number | null;
+  files: MoleculeFile[];
+};
 
 export class NotFound extends Error {}
 

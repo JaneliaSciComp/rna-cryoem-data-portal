@@ -75,6 +75,7 @@ def test_first_scan_catalogs_molecules(engine, root, thumbs):
     assert result.added == ["Mol23_TrpHolo", "Mol9_gRNAde"]
     m = molecule(engine, "Mol9_gRNAde")
     assert (m.name, m.pdb_id, m.resolution_a) == ("gRNAde", "10ZT", pytest.approx(2.97))
+    assert m.nomask_resolution_a == 3.5
     assert m.thumbnail_path == "Mol9_gRNAde.png" and (thumbs / "Mol9_gRNAde.png").is_file()
     assert {(f.path.split("/")[-1], f.kind, f.source) for f in m.files} == {
         ("10ZT.pdb", "model", "deposited"),
