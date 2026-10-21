@@ -7,19 +7,27 @@ def header_line(date: str, pdb: str) -> str:
     return f"{'HEADER':<10}{'RNA':<40}{date:<12}{pdb:<4}\n"
 
 
-def cryosparc_log(resolution: float) -> str:
-    """A cryoSPARC job's exported JSON (cryosparc_P93_J300_json.log), cut to the part we read."""
+def cryosparc_log(resolution: float, version: str = "v4.5.3", particles: int = 479673) -> str:
+    """A cryoSPARC job's exported JSON (cryosparc_P93_J300_json.log), cut to the part we read.
+    The masked resolution's key depends on the version; v4 also has a different radwn_final_A."""
+    if version.startswith("v4"):
+        fsc = {"radwn_tightmask_A": resolution, "radwn_final_A": resolution + 0.05}
+    else:
+        fsc = {"radwn_final_A": resolution}
     return json.dumps(
         {
+            "version": version,
             "job_type": "new_local_refine",
             "output_result_groups": [
-                {"uid": "J300-G0", "summary": {}},
+                {"uid": "J300-G2", "name": "particles_rejected", "type": "particle", "passthrough": "particles",
+                 "num_items": 0},
+                {"uid": "J300-G0", "name": "particles", "type": "particle", "passthrough": "particles",
+                 "num_items": particles, "summary": {}},
                 {
                     "uid": "J300-G1",
                     "type": "volume",
-                    "latest_summary_stats": {
-                        "fsc_info_best": {"radwn_final_A": resolution, "radwn_nomask_A": 3.5}
-                    },
+                    "num_items": 1,
+                    "latest_summary_stats": {"fsc_info_best": {**fsc, "radwn_nomask_A": 3.5}},
                 },
             ],
         }

@@ -24,6 +24,12 @@ test('keeps only the valid parts of a search from the URL', () => {
   expect(parseMoleculeSearch({ q: '', kind: ['map', 'nope'], max_resolution: 0, sort: 'path', order: 'up', page: 1.5, per_page: 251 })).toEqual({
     kind: ['map']
   });
+  expect(parseMoleculeSearch({ max_nomask_resolution: 4, min_particles: 300000, sort: 'particle_count' })).toMatchObject({
+    max_nomask_resolution: 4, min_particles: 300000, sort: 'particle_count'
+  });
+  expect(parseMoleculeSearch({ max_nomask_resolution: -1, min_particles: 1.5 })).toMatchObject({
+    max_nomask_resolution: undefined, min_particles: undefined
+  });
 });
 
 test('throws NotFound on 404', async () => {

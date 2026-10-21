@@ -44,7 +44,8 @@ def engine(_db_ready, monkeypatch):
     db.engine.cache_clear()
 
 
-# A test-only variable, never CATALOG_TYPESENSE_URL: the tests delete every molecules collection.
+# A test-only variable, never CATALOG_TYPESENSE_URL. The tests may share a local app's Typesense:
+# they index under their own alias, so they never touch the app's index.
 TEST_TYPESENSE = os.environ.get("TEST_TYPESENSE_URL", "http://localhost:58108")
 TEST_TYPESENSE_KEY = os.environ.get("TEST_TYPESENSE_API_KEY", "test")
 
@@ -52,11 +53,12 @@ TEST_TYPESENSE_KEY = os.environ.get("TEST_TYPESENSE_API_KEY", "test")
 @pytest.fixture
 def typesense(monkeypatch):
     """An empty Typesense: `pixi run db-up` locally, a service container in CI. CATALOG_TYPESENSE_*
-    point at it for code under test. Yields an httpx client for it."""
+    point at it for code under test, and search.ALIAS is test_molecules. Yields an httpx client for it."""
     monkeypatch.setenv("CATALOG_TYPESENSE_URL", TEST_TYPESENSE)
     monkeypatch.setenv("CATALOG_TYPESENSE_API_KEY", TEST_TYPESENSE_KEY)
     from rna_portal import search
 
+    monkeypatch.setattr(search, "ALIAS", "test_molecules")
     search.client.cache_clear()
     c = httpx.Client(base_url=TEST_TYPESENSE, headers={"X-TYPESENSE-API-KEY": TEST_TYPESENSE_KEY})
     deadline = time.monotonic() + 30

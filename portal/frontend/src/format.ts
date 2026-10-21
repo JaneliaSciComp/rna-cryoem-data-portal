@@ -2,6 +2,10 @@ export function formatResolution(r: number | null): string {
   return r === null ? '—' : `${r.toFixed(2)} Å`;
 }
 
+export function formatCount(n: number | null): string {
+  return n === null ? '—' : n.toLocaleString('en-US');
+}
+
 export function formatBytes(n: number): string {
   const units = ['B', 'KB', 'MB', 'GB'];
   let i = 0;

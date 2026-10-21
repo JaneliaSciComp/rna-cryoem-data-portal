@@ -9,6 +9,8 @@ export type MoleculeSummary = {
   name: string;
   pdb_id: string | null;
   resolution_a: number | null;
+  nomask_resolution_a: number | null;
+  particle_count: number | null;
   thumbnail_url: string | null;
   n_models: number;
   n_maps: number;
@@ -18,18 +20,30 @@ export type MoleculeSummary = {
 // GET /api/molecules: one page of the molecules that match the search.
 export type MoleculePage = {
   found: number;
+  // Every molecule in the catalog, before the search narrows them.
+  total: number;
   molecules: MoleculeSummary[];
   // Matches per value among this search's results.
   facets: { kinds?: Partial<Record<Kind, number>> };
 };
 
-export type SortKey = 'name' | 'pdb_id' | 'resolution_a' | 'n_models' | 'n_maps' | 'scanned_at';
+export type SortKey =
+  | 'name'
+  | 'pdb_id'
+  | 'resolution_a'
+  | 'nomask_resolution_a'
+  | 'particle_count'
+  | 'n_models'
+  | 'n_maps'
+  | 'scanned_at';
 
 export type MoleculeSearch = {
   q?: string;
   // Every listed kind must be present.
   kind?: Kind[];
   max_resolution?: number;
+  max_nomask_resolution?: number;
+  min_particles?: number;
   sort?: SortKey;
   order?: 'asc' | 'desc';
   page?: number;
@@ -37,7 +51,16 @@ export type MoleculeSearch = {
 };
 
 const KINDS: readonly Kind[] = ['model', 'map', 'plot', 'micrograph', 'report', 'log'];
-const SORT_KEYS: readonly SortKey[] = ['name', 'pdb_id', 'resolution_a', 'n_models', 'n_maps', 'scanned_at'];
+const SORT_KEYS: readonly SortKey[] = [
+  'name',
+  'pdb_id',
+  'resolution_a',
+  'nomask_resolution_a',
+  'particle_count',
+  'n_models',
+  'n_maps',
+  'scanned_at'
+];
 const positive = (v: unknown) => (Number(v) > 0 && Number.isFinite(Number(v)) ? Number(v) : undefined);
 const positiveInt = (v: unknown) => (Number.isInteger(positive(v)) ? Number(v) : undefined);
 
@@ -51,6 +74,8 @@ export function parseMoleculeSearch(raw: Record<string, unknown>): MoleculeSearc
     q: raw.q === undefined || raw.q === '' ? undefined : String(raw.q),
     kind: kind.length ? kind : undefined,
     max_resolution: positive(raw.max_resolution),
+    max_nomask_resolution: positive(raw.max_nomask_resolution),
+    min_particles: positiveInt(raw.min_particles),
     sort: SORT_KEYS.includes(raw.sort as SortKey) ? (raw.sort as SortKey) : undefined,
     order: raw.order === 'asc' || raw.order === 'desc' ? raw.order : undefined,
     page: positiveInt(raw.page),
@@ -82,7 +107,6 @@ export type MoleculeFile = {
 };
 
 export type MoleculeDetail = Omit<MoleculeSummary, 'n_models' | 'n_maps'> & {
-  nomask_resolution_a: number | null;
   files: MoleculeFile[];
 };
 

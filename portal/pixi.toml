@@ -29,7 +29,7 @@ ovito = "*"
 
 [tasks]
 # One Postgres: the tests own the `postgres` database (they drop its schema), local runs use `portal`.
-# One Typesense: the tests delete its molecules collections, so `pixi run reindex` after testing.
+# One Typesense: the tests index under their own alias (test_molecules), so they leave the app's alone.
 test = { cmd = "pytest", cwd = "backend" }
 db-up = """
 docker start rna-portal-testdb 2>/dev/null || docker run -d --name rna-portal-testdb -p 55432:5432 -e POSTGRES_PASSWORD=test -e POSTGRES_DB=portal postgres:16-alpine

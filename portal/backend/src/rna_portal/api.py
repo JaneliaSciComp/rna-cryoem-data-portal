@@ -15,6 +15,7 @@ from urllib.parse import quote
 from fastapi import Depends, FastAPI, HTTPException, Query, Response
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from rna_portal import config, db, search
@@ -51,6 +52,8 @@ class MoleculeSummary(BaseModel):
     name: str
     pdb_id: str | None
     resolution_a: float | None
+    nomask_resolution_a: float | None
+    particle_count: int | None
     thumbnail_url: str | None
     n_models: int
     n_maps: int
@@ -59,6 +62,7 @@ class MoleculeSummary(BaseModel):
 
 class MoleculePage(BaseModel):
     found: int  # matches across all pages
+    total: int  # every molecule in the catalog, before the search narrows them
     molecules: list[MoleculeSummary]
     # Matches per value, among this search's results: {"kinds": {"map": 3, ...}}
     facets: dict[str, dict[str, int]]
@@ -73,6 +77,7 @@ class MoleculeDetail(BaseModel):
     pdb_id: str | None
     resolution_a: float | None
     nomask_resolution_a: float | None
+    particle_count: int | None
     thumbnail_url: str | None
     scanned_at: datetime
     files: list[FileOut]
@@ -101,26 +106,32 @@ def list_molecules(
     q: Annotated[str | None, Query(max_length=200)] = None,
     kind: Annotated[list[Kind], Query()] = [],
     max_resolution: Annotated[float | None, Query(gt=0, allow_inf_nan=False)] = None,
+    max_nomask_resolution: Annotated[float | None, Query(gt=0, allow_inf_nan=False)] = None,
+    min_particles: Annotated[int | None, Query(ge=1)] = None,
     sort: SortKey | None = None,
     order: Literal["asc", "desc"] = "asc",
     page: Annotated[int, Query(ge=1)] = 1,
     per_page: Annotated[int, Query(ge=1, le=250)] = 10,
+    session: Session = Depends(get_session),
 ):
     """Search the molecules: q matches name, id, or PDB ID; each filter narrows the results.
     Without a sort, the best text matches come first, then names A to Z."""
     try:
         r = search.search(
             q=q, kinds=kind, max_resolution=max_resolution,
+            max_nomask_resolution=max_nomask_resolution, min_particles=min_particles,
             sort=sort, order=order, page=page, per_page=per_page,
         )
     except search.SearchUnavailable as exc:
         raise HTTPException(status_code=503, detail=f"search unavailable: {exc}")
     return MoleculePage(
         found=r["found"],
+        total=session.scalar(select(func.count()).select_from(Molecule)),
         molecules=[
             MoleculeSummary(
                 id=d["molecule_id"], name=d["name"], pdb_id=d.get("pdb_id"),
-                resolution_a=d.get("resolution_a"), thumbnail_url=_thumbnail_url(d.get("thumbnail_path")),
+                resolution_a=d.get("resolution_a"), nomask_resolution_a=d.get("nomask_resolution_a"),
+                particle_count=d.get("particle_count"), thumbnail_url=_thumbnail_url(d.get("thumbnail_path")),
                 n_models=d["n_models"], n_maps=d["n_maps"], scanned_at=d["scanned_at"],
             )
             for d in (hit["document"] for hit in r["hits"])
@@ -136,7 +147,7 @@ def get_molecule(molecule_id: str, session: Session = Depends(get_session)):
         raise HTTPException(status_code=404, detail="molecule not found")
     return MoleculeDetail(
         id=m.id, name=m.name, pdb_id=m.pdb_id, resolution_a=m.resolution_a,
-        nomask_resolution_a=m.nomask_resolution_a,
+        nomask_resolution_a=m.nomask_resolution_a, particle_count=m.particle_count,
         thumbnail_url=_thumbnail_url(m.thumbnail_path), scanned_at=m.scanned_at,
         files=[_file_out(f) for f in m.files],
     )

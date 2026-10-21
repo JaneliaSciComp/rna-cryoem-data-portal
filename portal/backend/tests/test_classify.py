@@ -15,6 +15,7 @@ from rna_portal.models import Kind, Source
         ("Mol9_gRNAde/CryoEM/Maps/cryosparc_P93_J300_009_volume_map.mrc", (Kind.MAP, Source.EXPERIMENTAL)),
         ("Mol9_gRNAde/CryoEM/Maps/J300_fsc_iteration_009.png", (Kind.PLOT, Source.EXPERIMENTAL)),
         ("Mol9_gRNAde/CryoEM/Maps/cryosparc_P93_J300_json.log", (Kind.LOG, Source.EXPERIMENTAL)),
+        ("Mol105/CryoEM/Maps/cryosparc_P58_J291.json", (Kind.LOG, Source.EXPERIMENTAL)),
         ("Mol9_gRNAde/CryoEM/Micrographs/J1_raw_data_001.png", (Kind.MICROGRAPH, Source.EXPERIMENTAL)),
         ("Mol23_TrpHolo/CryoEM/Micrographs/J90_defocus_range.png", (Kind.MICROGRAPH, Source.EXPERIMENTAL)),
         # Folder names and extensions are case-insensitive.

@@ -113,11 +113,15 @@ def _sync_molecule(session: Session, root: Path, thumbnails: Path, folder: str, 
         molecule.name = parsers.molecule_name(folder)
         deposited = [root / p for p, (k, s, *_) in found.items() if k == Kind.MODEL and s == Source.DEPOSITED]
         molecule.pdb_id = next((i for i in map(parsers.pdb_id, deposited) if i), None)
-        logs = [root / p for p, (k, *_) in found.items() if k == Kind.LOG]
-        resolutions = [r for r in map(parsers.resolution_a, logs) if r is not None]
-        molecule.resolution_a = min(resolutions) if resolutions else None
-        nomask = [r for r in map(parsers.nomask_resolution_a, logs) if r is not None]
-        molecule.nomask_resolution_a = min(nomask) if nomask else None
+        logs = sorted(p for p, (k, *_) in found.items() if k == Kind.LOG)
+        # One cryoSPARC log per molecule until the team says whether a folder can hold several,
+        # and which one counts. Until then, read the first and warn.
+        if len(logs) > 1:
+            log.warning("%s has %d cryoSPARC logs; reading %s", folder, len(logs), logs[0])
+        job = root / logs[0] if logs else None
+        molecule.resolution_a = parsers.resolution_a(job) if job else None
+        molecule.nomask_resolution_a = parsers.nomask_resolution_a(job) if job else None
+        molecule.particle_count = parsers.particle_count(job) if job else None
         molecule.parsed_version = parsers.PARSER_VERSION
         molecule.scanned_at = datetime.now(timezone.utc)
 
