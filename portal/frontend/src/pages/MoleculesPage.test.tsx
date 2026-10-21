@@ -3,11 +3,11 @@ import userEvent from '@testing-library/user-event';
 import { mockFetch, renderApp } from '../test/renderApp';
 
 const MOL9 = {
-  id: 'Mol9_gRNAde', name: 'gRNAde', pdb_id: '10ZT', resolution_a: 2.9663,
+  id: 'Mol9_gRNAde', name: 'gRNAde', pdb_id: '10ZT', resolution_a: 2.9663, nomask_resolution_a: 3.5678, particle_count: 479673,
   thumbnail_url: '/api/thumbnails/Mol9_gRNAde.png', n_models: 6, n_maps: 3, scanned_at: '2026-10-01T12:00:00Z'
 };
 const MOL23 = {
-  id: 'Mol23_TrpHolo', name: 'TrpHolo', pdb_id: null, resolution_a: null,
+  id: 'Mol23_TrpHolo', name: 'TrpHolo', pdb_id: null, resolution_a: null, nomask_resolution_a: null, particle_count: null,
   thumbnail_url: null, n_models: 0, n_maps: 0, scanned_at: '2026-10-01T12:00:00Z'
 };
 const page = (molecules: object[], found = molecules.length, facets = {}) => ({ found, molecules, facets });
@@ -22,7 +22,10 @@ test('lists the molecules', async () => {
   const link = await screen.findByRole('link', { name: 'gRNAde' });
   expect(link).toHaveAttribute('href', '/molecules/Mol9_gRNAde');
   expect(screen.getByRole('link', { name: '10ZT' })).toHaveAttribute('href', 'https://www.rcsb.org/structure/10ZT');
+  expect(screen.getByRole('columnheader', { name: /Masked resolution/ })).toBeInTheDocument();
   expect(screen.getByText('2.97 Å')).toBeInTheDocument();
+  expect(screen.getByText('3.57 Å')).toBeInTheDocument();
+  expect(screen.getByText('479,673')).toBeInTheDocument();
   expect(screen.getByRole('img', { name: 'gRNAde' })).toHaveAttribute('src', '/api/thumbnails/Mol9_gRNAde.png');
   expect(screen.getByLabelText('No thumbnail for TrpHolo')).toBeInTheDocument();
 });
@@ -59,7 +62,7 @@ test('asks the API to sort by a column', async () => {
   expect(searches(fetchMock)).toEqual(['page=1&per_page=10']);
 
   const sortByResolution = () =>
-    userEvent.click(within(screen.getByRole('columnheader', { name: /Resolution/ })).getByRole('button'));
+    userEvent.click(within(screen.getByRole('columnheader', { name: /Masked resolution/ })).getByRole('button'));
   // Numbers sort descending first.
   await sortByResolution();
   await sortByResolution();
@@ -111,9 +114,20 @@ test('filters by resolution', async () => {
   const router = renderApp('/');
   await screen.findByRole('link', { name: 'gRNAde' });
 
-  await userEvent.type(screen.getByRole('spinbutton', { name: 'Max resolution' }), '3.5');
+  await userEvent.type(screen.getByRole('spinbutton', { name: 'Max masked resolution' }), '3.5');
   await waitFor(() => expect(searches(fetchMock)).toContain('max_resolution=3.5&page=1&per_page=10'));
   expect(router.state.location.search).toEqual({ max_resolution: 3.5 });
+});
+
+test('filters by no mask resolution and particles', async () => {
+  const fetchMock = mockFetch({ '/api/molecules': page([MOL9]) });
+  const router = renderApp('/');
+  await screen.findByRole('link', { name: 'gRNAde' });
+
+  await userEvent.type(screen.getByRole('spinbutton', { name: 'Max no mask resolution' }), '4');
+  await userEvent.type(screen.getByRole('spinbutton', { name: 'Min particles' }), '300000');
+  await waitFor(() => expect(searches(fetchMock)).toContain('max_nomask_resolution=4&min_particles=300000&page=1&per_page=10'));
+  expect(router.state.location.search).toEqual({ max_nomask_resolution: 4, min_particles: 300000 });
 });
 
 test('shows the results a shared link describes', async () => {
@@ -124,6 +138,6 @@ test('shows the results a shared link describes', async () => {
   expect(searches(fetchMock)).toEqual(['q=grna&kind=map&max_resolution=3&sort=resolution_a&order=desc&page=2&per_page=10']);
   expect(screen.getByRole('searchbox', { name: 'Search' })).toHaveValue('grna');
   expect(screen.getByRole('checkbox', { name: /Maps/ })).toBeChecked();
-  expect(screen.getByRole('spinbutton', { name: 'Max resolution' })).toHaveValue(3);
+  expect(screen.getByRole('spinbutton', { name: 'Max masked resolution' })).toHaveValue(3);
   expect(screen.getByText('11-12 of 12')).toBeInTheDocument();
 });

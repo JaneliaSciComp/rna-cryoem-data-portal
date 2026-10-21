@@ -62,7 +62,7 @@ export function MoleculePage({ id }: { readonly id: string }) {
               </MuiLink>
             </>
           ) : null}
-          {` · Resolution: ${formatResolution(m.resolution_a)}`}
+          {` · Masked resolution: ${formatResolution(m.resolution_a)}`}
           {` · No mask: ${formatResolution(m.nomask_resolution_a)}`}
           {` · Particles: ${formatCount(m.particle_count)}`}
         </Typography>

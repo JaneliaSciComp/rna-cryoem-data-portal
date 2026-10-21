@@ -36,7 +36,7 @@ import {
 } from 'material-react-table';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { type Kind, type MoleculeSearch, type MoleculeSummary, moleculesQuery } from '../api';
-import { formatResolution } from '../format';
+import { formatCount, formatResolution } from '../format';
 import { Thumbnail } from '../Thumbnail';
 
 const KINDS: [Kind, string][] = [
@@ -65,6 +65,33 @@ function useDebounced<T>(value: T, ms: number) {
     return () => clearTimeout(timer);
   }, [value, ms]);
   return debounced;
+}
+
+// A number box for the filter sidebar. A placeholder, not a label: a label overlaps the
+// number field's arrows.
+function NumberFilter(props: {
+  label: string;
+  placeholder: string;
+  value: string;
+  onChange: (value: string) => void;
+  step: number;
+  unit?: string;
+}) {
+  const { label, placeholder, value, onChange, step, unit } = props;
+  return (
+    <TextField
+      fullWidth
+      onChange={e => onChange(e.target.value)}
+      placeholder={placeholder}
+      size="small"
+      slotProps={{
+        htmlInput: { 'aria-label': label, min: 0, step },
+        input: unit ? { endAdornment: <InputAdornment position="end">{unit}</InputAdornment> } : undefined
+      }}
+      type="number"
+      value={value}
+    />
+  );
 }
 
 const toggle = <T,>(list: T[], value: T) => (list.includes(value) ? list.filter(v => v !== value) : [...list, value]);
@@ -102,18 +129,28 @@ function MoleculesTable() {
 
   const [q, setQ] = useState(search.q ?? '');
   const [maxResolution, setMaxResolution] = useState(search.max_resolution?.toString() ?? '');
+  const [maxNomask, setMaxNomask] = useState(search.max_nomask_resolution?.toString() ?? '');
+  const [minParticles, setMinParticles] = useState(search.min_particles?.toString() ?? '');
   const typed = {
     q: useDebounced(q.trim(), 300) || undefined,
-    max_resolution: Number(useDebounced(maxResolution, 300)) || undefined
+    max_resolution: Number(useDebounced(maxResolution, 300)) || undefined,
+    max_nomask_resolution: Number(useDebounced(maxNomask, 300)) || undefined,
+    // The API takes whole particles.
+    min_particles: Math.trunc(Number(useDebounced(minParticles, 300))) || undefined
   };
   useEffect(() => {
-    if (typed.q !== search.q || typed.max_resolution !== search.max_resolution) {
+    if (
+      typed.q !== search.q ||
+      typed.max_resolution !== search.max_resolution ||
+      typed.max_nomask_resolution !== search.max_nomask_resolution ||
+      typed.min_particles !== search.min_particles
+    ) {
       filter(typed);
     }
-  }, [typed.q, typed.max_resolution]);
+  }, [typed.q, typed.max_resolution, typed.max_nomask_resolution, typed.min_particles]);
 
   const kinds = search.kind ?? [];
-  const nFilters = kinds.length + (search.max_resolution ? 1 : 0);
+  const nFilters = kinds.length + [search.max_resolution, search.max_nomask_resolution, search.min_particles].filter(Boolean).length;
   const filtered = Boolean(search.q || nFilters);
   const sorting: MRT_SortingState = search.sort ? [{ id: search.sort, desc: search.order === 'desc' }] : [];
   const pagination: MRT_PaginationState = { pageIndex: (search.page ?? 1) - 1, pageSize: search.per_page ?? PER_PAGE };
@@ -123,6 +160,8 @@ function MoleculesTable() {
       q: search.q,
       kind: search.kind,
       max_resolution: search.max_resolution,
+      max_nomask_resolution: search.max_nomask_resolution,
+      min_particles: search.min_particles,
       sort: search.sort,
       order: search.sort && (search.order ?? 'asc'),
       page: pagination.pageIndex + 1,
@@ -197,9 +236,21 @@ function MoleculesTable() {
       },
       {
         accessorKey: 'resolution_a',
-        header: 'Resolution',
+        header: 'Masked resolution',
         size: 130,
         Cell: ({ row: { original: m } }) => formatResolution(m.resolution_a)
+      },
+      {
+        accessorKey: 'nomask_resolution_a',
+        header: 'No mask resolution',
+        size: 130,
+        Cell: ({ row: { original: m } }) => formatResolution(m.nomask_resolution_a)
+      },
+      {
+        accessorKey: 'particle_count',
+        header: 'Particles',
+        size: 120,
+        Cell: ({ row: { original: m } }) => formatCount(m.particle_count)
       },
       { accessorKey: 'n_models', header: 'Models', size: 110 },
       { accessorKey: 'n_maps', header: 'Maps', size: 100 },
@@ -306,20 +357,14 @@ function MoleculesTable() {
           ))}
         </FormGroup>
       </FilterSection>
-      <FilterSection title="Resolution">
-        {/* A placeholder, not a label: a label overlaps the number field's arrows. */}
-        <TextField
-          fullWidth
-          onChange={e => setMaxResolution(e.target.value)}
-          placeholder="Max resolution"
-          size="small"
-          slotProps={{
-            htmlInput: { 'aria-label': 'Max resolution', min: 0, step: 0.1 },
-            input: { endAdornment: <InputAdornment position="end">Å</InputAdornment> }
-          }}
-          type="number"
-          value={maxResolution}
-        />
+      <FilterSection title="Masked resolution">
+        <NumberFilter label="Max masked resolution" onChange={setMaxResolution} placeholder="Max resolution" step={0.1} unit="Å" value={maxResolution} />
+      </FilterSection>
+      <FilterSection title="No mask resolution">
+        <NumberFilter label="Max no mask resolution" onChange={setMaxNomask} placeholder="Max resolution" step={0.1} unit="Å" value={maxNomask} />
+      </FilterSection>
+      <FilterSection title="Particles">
+        <NumberFilter label="Min particles" onChange={setMinParticles} placeholder="Min particles" step={1000} value={minParticles} />
       </FilterSection>
     </Box>
   );

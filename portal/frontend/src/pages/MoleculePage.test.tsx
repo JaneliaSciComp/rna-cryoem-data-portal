@@ -28,7 +28,7 @@ test('shows the molecule', async () => {
   renderApp('/molecules/Mol9_gRNAde');
 
   expect(await screen.findByRole('heading', { name: 'gRNAde' })).toBeInTheDocument();
-  expect(screen.getByText(/Resolution: 2\.97 Å · No mask: 3\.50 Å · Particles: 479,673/)).toBeInTheDocument();
+  expect(screen.getByText(/Masked resolution: 2\.97 Å · No mask: 3\.50 Å · Particles: 479,673/)).toBeInTheDocument();
   // The picker opens on the deposited model.
   expect(screen.getByRole('combobox', { name: 'Model' })).toHaveTextContent('Deposited: 10ZT.pdb');
 

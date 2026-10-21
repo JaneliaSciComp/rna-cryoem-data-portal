@@ -39,7 +39,8 @@ def client(engine, typesense, tmp_path, monkeypatch):
             ),
             Molecule(id="Mol 9", name="Mol 9", scanned_at=NOW),
             Molecule(
-                id="Mol2_alpha", name="alpha", resolution_a=3.5, scanned_at=NOW,
+                id="Mol2_alpha", name="alpha", resolution_a=3.5, nomask_resolution_a=4.1, particle_count=200000,
+                scanned_at=NOW,
                 files=[f("Mol2_alpha/AlphaFold/a.cif", "model", "predicted"), f("Mol2_alpha/m/b.png", "micrograph", "other")],
             ),
         ])
@@ -77,6 +78,7 @@ def test_list_molecules(client):
     assert [r["id"] for r in body["molecules"]] == ["Mol2_alpha", "Mol9_gRNAde", "Mol 9"]
     mol9 = body["molecules"][1]
     assert (mol9["name"], mol9["pdb_id"], mol9["resolution_a"]) == ("gRNAde", "10ZT", 2.97)
+    assert (mol9["nomask_resolution_a"], mol9["particle_count"]) == (3.5, 479673)
     assert (mol9["n_models"], mol9["n_maps"]) == (2, 1)
     assert mol9["thumbnail_url"] == "/api/thumbnails/Mol9_gRNAde.png"
     assert mol9["scanned_at"] == "2026-10-01T00:00:00Z"
@@ -100,6 +102,9 @@ def test_search_text(client, q, expected):
     ({"kind": ["model", "micrograph"]}, ["Mol2_alpha"]),  # every listed kind
     ({"max_resolution": 3}, ["Mol9_gRNAde"]),  # no resolution: excluded
     ({"kind": "model", "max_resolution": 3}, ["Mol9_gRNAde"]),
+    ({"max_nomask_resolution": 3.8}, ["Mol9_gRNAde"]),
+    ({"min_particles": 300000}, ["Mol9_gRNAde"]),
+    ({"min_particles": 200000}, ["Mol2_alpha", "Mol9_gRNAde"]),  # at least: inclusive
 ])
 def test_filters(client, params, expected):
     assert ids(client, **params) == expected
@@ -113,6 +118,8 @@ def test_facets_count_within_the_results(client):
 @pytest.mark.parametrize("sort, order, expected", [
     ("resolution_a", "asc", ["Mol9_gRNAde", "Mol2_alpha", "Mol 9"]),
     ("resolution_a", "desc", ["Mol2_alpha", "Mol9_gRNAde", "Mol 9"]),  # blanks stay last
+    ("nomask_resolution_a", "asc", ["Mol9_gRNAde", "Mol2_alpha", "Mol 9"]),
+    ("particle_count", "desc", ["Mol9_gRNAde", "Mol2_alpha", "Mol 9"]),
     ("pdb_id", "asc", ["Mol9_gRNAde", "Mol2_alpha", "Mol 9"]),
     ("n_models", "desc", ["Mol9_gRNAde", "Mol2_alpha", "Mol 9"]),
     ("name", "desc", ["Mol 9", "Mol9_gRNAde", "Mol2_alpha"]),
@@ -129,6 +136,7 @@ def test_pages(client):
 
 @pytest.mark.parametrize("params", [
     {"kind": "nope"}, {"sort": "path"}, {"max_resolution": "inf"}, {"max_resolution": 0},
+    {"max_nomask_resolution": 0}, {"min_particles": 0}, {"min_particles": 1.5},
     {"per_page": 251}, {"page": 0}, {"q": "x" * 201},
 ])
 def test_bad_params_are_422(client, params):

@@ -27,6 +27,8 @@ FIELDS = [
     {"name": "molecule_id", "type": "string", "infix": True},
     {"name": "pdb_id", "type": "string", "optional": True, "sort": True},
     {"name": "resolution_a", "type": "float", "optional": True},
+    {"name": "nomask_resolution_a", "type": "float", "optional": True},
+    {"name": "particle_count", "type": "int32", "optional": True},
     {"name": "n_models", "type": "int32"},
     {"name": "n_maps", "type": "int32"},
     {"name": "scanned_at", "type": "int64"},  # Unix seconds
@@ -37,6 +39,7 @@ FIELDS = [
 # Sort keys the API accepts, by the document field they sort on.
 SORT_FIELDS = {
     "name": "name", "pdb_id": "pdb_id", "resolution_a": "resolution_a",
+    "nomask_resolution_a": "nomask_resolution_a", "particle_count": "particle_count",
     "n_models": "n_models", "n_maps": "n_maps", "scanned_at": "scanned_at",
 }
 _OPTIONAL = {f["name"] for f in FIELDS if f.get("optional")}
@@ -60,6 +63,7 @@ def document(m: Molecule) -> dict:
     doc = {
         "id": m.id, "molecule_id": m.id, "name": m.name,
         "pdb_id": m.pdb_id, "resolution_a": m.resolution_a,
+        "nomask_resolution_a": m.nomask_resolution_a, "particle_count": m.particle_count,
         "n_models": sum(f.kind == Kind.MODEL for f in m.files),
         "n_maps": sum(f.kind == Kind.MAP for f in m.files),
         "scanned_at": int(m.scanned_at.timestamp()),
@@ -101,6 +105,7 @@ def reindex(engine: Engine) -> int:
 
 def search(
     *, q: str | None, kinds: list[str], max_resolution: float | None,
+    max_nomask_resolution: float | None, min_particles: int | None,
     sort: str | None, order: str, page: int, per_page: int,
 ) -> dict:
     """One page of matching molecules. Returns Typesense's response: found, hits, facet_counts.
@@ -112,6 +117,10 @@ def search(
     filters = [f"kinds:={k}" for k in kinds]
     if max_resolution is not None:
         filters.append(f"resolution_a:<={max_resolution}")
+    if max_nomask_resolution is not None:
+        filters.append(f"nomask_resolution_a:<={max_nomask_resolution}")
+    if min_particles is not None:
+        filters.append(f"particle_count:>={min_particles}")
     if sort is not None:
         field = SORT_FIELDS[sort]
         missing = "(missing_values: last)" if field in _OPTIONAL else ""

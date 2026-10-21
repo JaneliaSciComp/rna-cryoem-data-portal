@@ -51,6 +51,8 @@ class MoleculeSummary(BaseModel):
     name: str
     pdb_id: str | None
     resolution_a: float | None
+    nomask_resolution_a: float | None
+    particle_count: int | None
     thumbnail_url: str | None
     n_models: int
     n_maps: int
@@ -102,6 +104,8 @@ def list_molecules(
     q: Annotated[str | None, Query(max_length=200)] = None,
     kind: Annotated[list[Kind], Query()] = [],
     max_resolution: Annotated[float | None, Query(gt=0, allow_inf_nan=False)] = None,
+    max_nomask_resolution: Annotated[float | None, Query(gt=0, allow_inf_nan=False)] = None,
+    min_particles: Annotated[int | None, Query(ge=1)] = None,
     sort: SortKey | None = None,
     order: Literal["asc", "desc"] = "asc",
     page: Annotated[int, Query(ge=1)] = 1,
@@ -112,6 +116,7 @@ def list_molecules(
     try:
         r = search.search(
             q=q, kinds=kind, max_resolution=max_resolution,
+            max_nomask_resolution=max_nomask_resolution, min_particles=min_particles,
             sort=sort, order=order, page=page, per_page=per_page,
         )
     except search.SearchUnavailable as exc:
@@ -121,7 +126,8 @@ def list_molecules(
         molecules=[
             MoleculeSummary(
                 id=d["molecule_id"], name=d["name"], pdb_id=d.get("pdb_id"),
-                resolution_a=d.get("resolution_a"), thumbnail_url=_thumbnail_url(d.get("thumbnail_path")),
+                resolution_a=d.get("resolution_a"), nomask_resolution_a=d.get("nomask_resolution_a"),
+                particle_count=d.get("particle_count"), thumbnail_url=_thumbnail_url(d.get("thumbnail_path")),
                 n_models=d["n_models"], n_maps=d["n_maps"], scanned_at=d["scanned_at"],
             )
             for d in (hit["document"] for hit in r["hits"])
