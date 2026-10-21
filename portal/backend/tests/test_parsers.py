@@ -48,7 +48,14 @@ def test_pdb_id_none(tmp_path):
 def test_resolution_from_cryosparc_log(tmp_path):
     p = tmp_path / "cryosparc_P93_J300_json.log"
     p.write_text(cryosparc_log(2.9663609005244287))
-    assert resolution_a(p) == pytest.approx(2.9664, abs=1e-4)
+    assert resolution_a(p) == pytest.approx(2.9664, abs=1e-4)  # radwn_tightmask_A, not radwn_final_A
+    assert nomask_resolution_a(p) == 3.5
+
+
+def test_resolution_from_cryosparc_v5_log(tmp_path):
+    p = tmp_path / "job.log"
+    p.write_text(cryosparc_log(2.8, version="v5.0.1"))
+    assert resolution_a(p) == 2.8  # radwn_final_A
     assert nomask_resolution_a(p) == 3.5
 
 

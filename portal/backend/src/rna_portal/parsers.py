@@ -5,7 +5,7 @@ from pathlib import Path
 
 # Bump when a change here would give existing molecules different facts: the next scan then
 # re-reads every molecule stamped with an older version, even if its files haven't changed.
-PARSER_VERSION = 1
+PARSER_VERSION = 2
 
 _MOL_PREFIX = re.compile(r"^mol\d+_", re.IGNORECASE)
 _PDB_ID = re.compile(r"[0-9][A-Za-z0-9]{3}")
@@ -39,28 +39,38 @@ def pdb_id(path: Path) -> str | None:
 
 
 def resolution_a(log_path: Path) -> float | None:
-    """Final GSFSC resolution in Å from a cryoSPARC job's exported JSON log: the best
-    `latest_summary_stats.fsc_info_best.radwn_final_A` across its output groups."""
-    return _best_fsc(log_path, "radwn_final_A")
+    """Masked GSFSC resolution in Å from a cryoSPARC job's exported JSON log: the best
+    `latest_summary_stats.fsc_info_best` value across its volume output groups. cryoSPARC v4
+    calls it `radwn_tightmask_A`; v5 calls it `radwn_final_A` (v4's `radwn_final_A` is another
+    curve)."""
+    doc = _load(log_path)
+    key = "radwn_tightmask_A" if str(doc.get("version", "")).startswith("v4") else "radwn_final_A"
+    return _best_fsc(doc, key)
 
 
 def nomask_resolution_a(log_path: Path) -> float | None:
     """No-mask GSFSC resolution in Å from a cryoSPARC job's exported JSON log: the best
     `latest_summary_stats.fsc_info_best.radwn_nomask_A` across its volume output groups."""
-    return _best_fsc(log_path, "radwn_nomask_A", group_type="volume")
+    return _best_fsc(_load(log_path), "radwn_nomask_A")
 
 
-def _best_fsc(log_path: Path, key: str, group_type: str | None = None) -> float | None:
+def _load(log_path: Path) -> dict:
+    """The log's JSON, or {} if it can't be read."""
     try:
         doc = json.loads(log_path.read_text(errors="replace"))
     except (OSError, ValueError):
-        return None
-    if not isinstance(doc, dict):
-        return None
+        return {}
+    return doc if isinstance(doc, dict) else {}
+
+
+def _groups(doc: dict, group_type: str) -> list[dict]:
+    groups = doc.get("output_result_groups") or []
+    return [g for g in groups if isinstance(g, dict) and g.get("type") == group_type]
+
+
+def _best_fsc(doc: dict, key: str) -> float | None:
     values = []
-    for group in doc.get("output_result_groups") or []:
-        if not isinstance(group, dict) or (group_type and group.get("type") != group_type):
-            continue
+    for group in _groups(doc, "volume"):
         stats = group.get("latest_summary_stats") or {}
         value = (stats.get("fsc_info_best") or {}).get(key)
         if isinstance(value, (int, float)):
