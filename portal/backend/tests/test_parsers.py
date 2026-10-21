@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from rna_portal.parsers import molecule_name, nomask_resolution_a, pdb_id, resolution_a
+from rna_portal.parsers import molecule_name, nomask_resolution_a, particle_count, pdb_id, resolution_a
 from samples import cryosparc_log, header_line
 
 
@@ -50,13 +50,15 @@ def test_resolution_from_cryosparc_log(tmp_path):
     p.write_text(cryosparc_log(2.9663609005244287))
     assert resolution_a(p) == pytest.approx(2.9664, abs=1e-4)  # radwn_tightmask_A, not radwn_final_A
     assert nomask_resolution_a(p) == 3.5
+    assert particle_count(p) == 479673
 
 
 def test_resolution_from_cryosparc_v5_log(tmp_path):
     p = tmp_path / "job.log"
-    p.write_text(cryosparc_log(2.8, version="v5.0.1"))
+    p.write_text(cryosparc_log(2.8, version="v5.0.1", particles=12345))
     assert resolution_a(p) == 2.8  # radwn_final_A
     assert nomask_resolution_a(p) == 3.5
+    assert particle_count(p) == 12345
 
 
 def test_nomask_resolution_reads_only_volume_groups(tmp_path):
@@ -77,3 +79,4 @@ def test_resolution_absent(tmp_path, content):
     p.write_text(content)
     assert resolution_a(p) is None
     assert nomask_resolution_a(p) is None
+    assert particle_count(p) is None

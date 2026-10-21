@@ -83,6 +83,7 @@ export type MoleculeFile = {
 
 export type MoleculeDetail = Omit<MoleculeSummary, 'n_models' | 'n_maps'> & {
   nomask_resolution_a: number | null;
+  particle_count: number | null;
   files: MoleculeFile[];
 };
 

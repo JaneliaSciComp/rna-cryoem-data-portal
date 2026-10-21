@@ -54,6 +54,15 @@ def nomask_resolution_a(log_path: Path) -> float | None:
     return _best_fsc(_load(log_path), "radwn_nomask_A")
 
 
+def particle_count(log_path: Path) -> int | None:
+    """Particles in a cryoSPARC job's output, from its exported JSON log: `num_items` of its
+    `particles` output group. v5 jobs also output a `particles_rejected` group."""
+    for group in _groups(_load(log_path), "particle"):
+        if group.get("name") == "particles" and isinstance(group.get("num_items"), int):
+            return group["num_items"]
+    return None
+
+
 def _load(log_path: Path) -> dict:
     """The log's JSON, or {} if it can't be read."""
     try:

@@ -73,6 +73,7 @@ class MoleculeDetail(BaseModel):
     pdb_id: str | None
     resolution_a: float | None
     nomask_resolution_a: float | None
+    particle_count: int | None
     thumbnail_url: str | None
     scanned_at: datetime
     files: list[FileOut]
@@ -136,7 +137,7 @@ def get_molecule(molecule_id: str, session: Session = Depends(get_session)):
         raise HTTPException(status_code=404, detail="molecule not found")
     return MoleculeDetail(
         id=m.id, name=m.name, pdb_id=m.pdb_id, resolution_a=m.resolution_a,
-        nomask_resolution_a=m.nomask_resolution_a,
+        nomask_resolution_a=m.nomask_resolution_a, particle_count=m.particle_count,
         thumbnail_url=_thumbnail_url(m.thumbnail_path), scanned_at=m.scanned_at,
         files=[_file_out(f) for f in m.files],
     )

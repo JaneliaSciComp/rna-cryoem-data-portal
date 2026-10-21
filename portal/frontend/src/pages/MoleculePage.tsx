@@ -6,7 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { type ReactNode, useState } from 'react';
 import { NotFound, moleculeQuery } from '../api';
-import { formatBytes, formatResolution } from '../format';
+import { formatBytes, formatCount, formatResolution } from '../format';
 import { Gallery } from '../molecule/Gallery';
 import { SOURCE_LABEL, groupFiles } from '../molecule/groupFiles';
 import { formatFor } from '../molecule/loadMolstar';
@@ -64,6 +64,7 @@ export function MoleculePage({ id }: { readonly id: string }) {
           ) : null}
           {` · Resolution: ${formatResolution(m.resolution_a)}`}
           {` · No mask: ${formatResolution(m.nomask_resolution_a)}`}
+          {` · Particles: ${formatCount(m.particle_count)}`}
         </Typography>
       </Box>
 

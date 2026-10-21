@@ -121,6 +121,7 @@ def _sync_molecule(session: Session, root: Path, thumbnails: Path, folder: str, 
         job = root / logs[0] if logs else None
         molecule.resolution_a = parsers.resolution_a(job) if job else None
         molecule.nomask_resolution_a = parsers.nomask_resolution_a(job) if job else None
+        molecule.particle_count = parsers.particle_count(job) if job else None
         molecule.parsed_version = parsers.PARSER_VERSION
         molecule.scanned_at = datetime.now(timezone.utc)
 
