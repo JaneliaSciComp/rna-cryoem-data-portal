@@ -29,6 +29,8 @@ def classify(path: str) -> tuple[Kind, Source] | None:
     extension = p.suffix.lower()
     if extension == ".png":
         kind = Kind.MICROGRAPH if "micrographs" in subfolders else Kind.PLOT
+    elif extension == ".json" and p.name.lower().startswith("cryosparc_"):
+        kind = Kind.LOG  # newer exports: cryosparc_P58_J291.json, not cryosparc_P93_J300_json.log
     elif extension in _KIND_BY_EXTENSION:
         kind = _KIND_BY_EXTENSION[extension]
     else:
