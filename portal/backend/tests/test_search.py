@@ -10,11 +10,11 @@ NOW = datetime(2026, 10, 1, tzinfo=timezone.utc)
 
 
 def collections(typesense):
-    return sorted(c["name"] for c in typesense.get("/collections").json() if c["name"].startswith("molecules_"))
+    return sorted(c["name"] for c in typesense.get("/collections").json() if c["name"].startswith(f"{search.ALIAS}_"))
 
 
 def aliased(typesense):
-    return typesense.get("/aliases/molecules").json()["collection_name"]
+    return typesense.get(f"/aliases/{search.ALIAS}").json()["collection_name"]
 
 
 def test_reindex_swaps_the_alias_and_drops_the_old_collection(engine, typesense):
@@ -29,7 +29,7 @@ def test_reindex_swaps_the_alias_and_drops_the_old_collection(engine, typesense)
 
 def test_empty_catalog_indexes_nothing(engine, typesense):
     assert search.reindex(engine) == 0
-    assert typesense.get("/collections/molecules").json()["num_documents"] == 0
+    assert typesense.get(f"/collections/{search.ALIAS}").json()["num_documents"] == 0
 
 
 def test_failed_reindex_keeps_the_previous_index(engine, typesense, monkeypatch):
