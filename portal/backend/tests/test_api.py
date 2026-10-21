@@ -73,7 +73,7 @@ def ids(client, **params):
 
 def test_list_molecules(client):
     body = client.get("/molecules").json()
-    assert body["found"] == 3
+    assert (body["found"], body["total"]) == (3, 3)
     # Names A to Z, ignoring case.
     assert [r["id"] for r in body["molecules"]] == ["Mol2_alpha", "Mol9_gRNAde", "Mol 9"]
     mol9 = body["molecules"][1]
@@ -132,6 +132,11 @@ def test_pages(client):
     assert ids(client, per_page=2) == ["Mol2_alpha", "Mol9_gRNAde"]
     body = client.get("/molecules", params={"per_page": 2, "page": 2}).json()
     assert ([m["id"] for m in body["molecules"]], body["found"]) == (["Mol 9"], 3)
+
+
+def test_total_ignores_the_search(client):
+    body = client.get("/molecules", params={"min_particles": 300000}).json()
+    assert (body["found"], body["total"]) == (1, 3)
 
 
 @pytest.mark.parametrize("params", [

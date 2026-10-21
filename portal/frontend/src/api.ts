@@ -20,6 +20,8 @@ export type MoleculeSummary = {
 // GET /api/molecules: one page of the molecules that match the search.
 export type MoleculePage = {
   found: number;
+  // Every molecule in the catalog, before the search narrows them.
+  total: number;
   molecules: MoleculeSummary[];
   // Matches per value among this search's results.
   facets: { kinds?: Partial<Record<Kind, number>> };

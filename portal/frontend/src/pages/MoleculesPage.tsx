@@ -12,6 +12,7 @@ import {
   Button,
   ButtonBase,
   Checkbox,
+  Chip,
   Dialog,
   Drawer,
   FormControlLabel,
@@ -19,6 +20,7 @@ import {
   IconButton,
   InputAdornment,
   Link as MuiLink,
+  Stack,
   TextField,
   Tooltip,
   Typography
@@ -48,6 +50,8 @@ const KINDS: [Kind, string][] = [
   ['log', 'Logs']
 ];
 const PER_PAGE = 10;
+// The filter sidebar and the table; one column on small screens, where the sidebar is a drawer.
+const COLUMNS = { xs: 'minmax(0, 1fr)', md: '240px minmax(0, 1fr)' };
 const route = getRouteApi('/');
 
 // Clips a value that's wider than its column to an ellipsis.
@@ -150,7 +154,39 @@ function MoleculesTable() {
   }, [typed.q, typed.max_resolution, typed.max_nomask_resolution, typed.min_particles]);
 
   const kinds = search.kind ?? [];
-  const nFilters = kinds.length + [search.max_resolution, search.max_nomask_resolution, search.min_particles].filter(Boolean).length;
+  // One chip per filter. Clearing a number filter empties its box too, which reaches the URL
+  // after the debounce; the filter call drops it from the URL now.
+  const chips = [
+    ...KINDS.filter(([value]) => kinds.includes(value)).map(([value, label]) => ({
+      label: `Has ${label.toLowerCase()}`,
+      clear: () => filter({ kind: toggle(kinds, value) })
+    })),
+    ...(search.max_resolution
+      ? [{ label: `Masked resolution ≤ ${search.max_resolution} Å`, clear: () => {
+            setMaxResolution('');
+            filter({ max_resolution: undefined });
+          } }]
+      : []),
+    ...(search.max_nomask_resolution
+      ? [{ label: `No mask resolution ≤ ${search.max_nomask_resolution} Å`, clear: () => {
+            setMaxNomask('');
+            filter({ max_nomask_resolution: undefined });
+          } }]
+      : []),
+    ...(search.min_particles
+      ? [{ label: `Particles ≥ ${formatCount(search.min_particles)}`, clear: () => {
+            setMinParticles('');
+            filter({ min_particles: undefined });
+          } }]
+      : [])
+  ];
+  const clearAll = () => {
+    setMaxResolution('');
+    setMaxNomask('');
+    setMinParticles('');
+    filter({ kind: undefined, max_resolution: undefined, max_nomask_resolution: undefined, min_particles: undefined });
+  };
+  const nFilters = chips.length;
   const filtered = Boolean(search.q || nFilters);
   const sorting: MRT_SortingState = search.sort ? [{ id: search.sort, desc: search.order === 'desc' }] : [];
   const pagination: MRT_PaginationState = { pageIndex: (search.page ?? 1) - 1, pageSize: search.per_page ?? PER_PAGE };
@@ -371,20 +407,46 @@ function MoleculesTable() {
 
   return (
     <>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, mb: 2 }}>
-        <Typography component="h1" variant="h4">
-          All molecules
-        </Typography>
-        <Button
-          onClick={() => setFiltersOpen(true)}
-          startIcon={<FilterListIcon />}
-          sx={{ display: { xs: 'inline-flex', md: 'none' }, flexShrink: 0 }}
-          variant="outlined"
-        >
-          Filters{nFilters > 0 ? ` (${nFilters})` : ''}
-        </Button>
+      {/* The same columns as the sidebar and table below. */}
+      <Box sx={{ display: 'grid', columnGap: 3, rowGap: 1, gridTemplateColumns: COLUMNS, alignItems: 'center', mb: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
+          <Typography component="h1" variant="h4">
+            All molecules
+          </Typography>
+          <Button
+            onClick={() => setFiltersOpen(true)}
+            startIcon={<FilterListIcon />}
+            sx={{ display: { xs: 'inline-flex', md: 'none' }, flexShrink: 0 }}
+            variant="outlined"
+          >
+            Filters{nFilters > 0 ? ` (${nFilters})` : ''}
+          </Button>
+        </Box>
+        {/* Beside the title on wide screens, so the table starts as high as it did before. */}
+        <Box sx={{ minWidth: 0 }}>
+          <Typography sx={{ minHeight: '1.6em' }} variant="h6">
+            {data ? `${formatCount(data.found)} out of ${formatCount(data.total)} total molecules match the selected filters` : null}
+          </Typography>
+          <Stack alignItems="center" direction="row" flexWrap="wrap" spacing={1} useFlexGap>
+            <Typography color="text.secondary" variant="body2">
+              Filtered by:
+            </Typography>
+            {chips.length > 0 ? (
+              <>
+                {chips.map(c => (
+                  <Chip key={c.label} label={c.label} onDelete={c.clear} size="small" />
+                ))}
+                <Chip color="primary" label="Clear all" onClick={clearAll} size="small" />
+              </>
+            ) : (
+              <Typography color="text.secondary" fontStyle="italic" variant="body2">
+                No filters selected
+              </Typography>
+            )}
+          </Stack>
+        </Box>
       </Box>
-      <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: '240px minmax(0, 1fr)' }, alignItems: 'start' }}>
+      <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: COLUMNS, alignItems: 'start' }}>
         <Box sx={{ display: { xs: 'none', md: 'block' } }}>{filterPanel}</Box>
         {error ? <Alert severity="error">Couldn't load the molecules: {error.message}</Alert> : <MaterialReactTable table={table} />}
         <Dialog onClose={() => setEnlarged(null)} open={enlarged !== null}>

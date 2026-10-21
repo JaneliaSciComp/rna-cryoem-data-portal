@@ -10,7 +10,7 @@ const MOL23 = {
   id: 'Mol23_TrpHolo', name: 'TrpHolo', pdb_id: null, resolution_a: null, nomask_resolution_a: null, particle_count: null,
   thumbnail_url: null, n_models: 0, n_maps: 0, scanned_at: '2026-10-01T12:00:00Z'
 };
-const page = (molecules: object[], found = molecules.length, facets = {}) => ({ found, molecules, facets });
+const page = (molecules: object[], found = molecules.length, facets = {}, total = 30) => ({ found, total, molecules, facets });
 // The URLs the page fetched molecules from, as their query strings.
 const searches = (fetchMock: ReturnType<typeof mockFetch>) =>
   fetchMock.mock.calls.map(([url]) => url as string).filter(url => url.startsWith('/api/molecules')).map(url => url.split('?')[1]);
@@ -140,4 +140,22 @@ test('shows the results a shared link describes', async () => {
   expect(screen.getByRole('checkbox', { name: /Maps/ })).toBeChecked();
   expect(screen.getByRole('spinbutton', { name: 'Max masked resolution' })).toHaveValue(3);
   expect(screen.getByText('11-12 of 12')).toBeInTheDocument();
+});
+
+test('shows the match count and a chip per filter', async () => {
+  const fetchMock = mockFetch({ '/api/molecules': page([MOL9], 1) });
+  const router = renderApp('/?kind=map&max_resolution=3&min_particles=300000');
+
+  expect(await screen.findByText('1 out of 30 total molecules match the selected filters')).toBeInTheDocument();
+  expect(screen.getByText('Has maps')).toBeInTheDocument();
+  expect(screen.getByText('Particles ≥ 300,000')).toBeInTheDocument();
+  await userEvent.click(within(screen.getByText('Masked resolution ≤ 3 Å').closest('.MuiChip-root') as HTMLElement).getByTestId('CancelIcon'));
+  await waitFor(() => expect(router.state.location.search).toEqual({ kind: ['map'], min_particles: 300000 }));
+  expect(screen.getByRole('spinbutton', { name: 'Max masked resolution' })).toHaveValue(null);
+
+  await userEvent.click(screen.getByRole('button', { name: 'Clear all' }));
+  await waitFor(() => expect(router.state.location.search).toEqual({}));
+  expect(screen.getByText('No filters selected')).toBeInTheDocument();
+  expect(screen.getByRole('spinbutton', { name: 'Min particles' })).toHaveValue(null);
+  expect(searches(fetchMock).at(-1)).toBe('page=1&per_page=10');
 });

@@ -15,6 +15,7 @@ from urllib.parse import quote
 from fastapi import Depends, FastAPI, HTTPException, Query, Response
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from rna_portal import config, db, search
@@ -61,6 +62,7 @@ class MoleculeSummary(BaseModel):
 
 class MoleculePage(BaseModel):
     found: int  # matches across all pages
+    total: int  # every molecule in the catalog, before the search narrows them
     molecules: list[MoleculeSummary]
     # Matches per value, among this search's results: {"kinds": {"map": 3, ...}}
     facets: dict[str, dict[str, int]]
@@ -110,6 +112,7 @@ def list_molecules(
     order: Literal["asc", "desc"] = "asc",
     page: Annotated[int, Query(ge=1)] = 1,
     per_page: Annotated[int, Query(ge=1, le=250)] = 10,
+    session: Session = Depends(get_session),
 ):
     """Search the molecules: q matches name, id, or PDB ID; each filter narrows the results.
     Without a sort, the best text matches come first, then names A to Z."""
@@ -123,6 +126,7 @@ def list_molecules(
         raise HTTPException(status_code=503, detail=f"search unavailable: {exc}")
     return MoleculePage(
         found=r["found"],
+        total=session.scalar(select(func.count()).select_from(Molecule)),
         molecules=[
             MoleculeSummary(
                 id=d["molecule_id"], name=d["name"], pdb_id=d.get("pdb_id"),
