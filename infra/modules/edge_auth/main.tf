@@ -69,6 +69,7 @@ resource "aws_iam_role_policy_attachment" "logs" {
 resource "aws_lambda_function" "this" {
   function_name    = var.name
   role             = aws_iam_role.this.arn
+  description      = "CloudFront viewer-request check of the Cognito session."
   runtime          = "nodejs22.x"
   handler          = "index.handler"
   filename         = data.archive_file.function.output_path
