@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { mockFetch, renderApp } from '../test/renderApp';
 
@@ -158,4 +158,18 @@ test('shows the match count and a chip per filter', async () => {
   expect(screen.getByText('No filters selected')).toBeInTheDocument();
   expect(screen.getByRole('spinbutton', { name: 'Min particles' })).toHaveValue(null);
   expect(searches(fetchMock).at(-1)).toBe('page=1&per_page=10');
+});
+
+test("clearing all right after clearing a chip doesn't bring a filter back", async () => {
+  mockFetch({ '/api/molecules': page([MOL9], 1) });
+  const router = renderApp('/?max_resolution=3&min_particles=300000');
+
+  await screen.findByText('Particles ≥ 300,000');
+  // fireEvent, not userEvent: Clear all has to land inside the cleared box's 300 ms debounce.
+  fireEvent.click(within(screen.getByText('Masked resolution ≤ 3 Å').closest('.MuiChip-root') as HTMLElement).getByTestId('CancelIcon'));
+  await new Promise(r => setTimeout(r, 100));
+  fireEvent.click(screen.getByRole('button', { name: 'Clear all' }));
+  // After the cleared box's debounce fires, before the particles box's does.
+  await new Promise(r => setTimeout(r, 250));
+  expect(router.state.location.search).toEqual({});
 });

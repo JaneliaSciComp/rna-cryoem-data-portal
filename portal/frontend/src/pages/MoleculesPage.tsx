@@ -36,7 +36,7 @@ import {
   type MRT_Updater,
   useMaterialReactTable
 } from 'material-react-table';
-import { type ReactNode, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { type Kind, type MoleculeSearch, type MoleculeSummary, moleculesQuery } from '../api';
 import { formatCount, formatResolution } from '../format';
 import { Thumbnail } from '../Thumbnail';
@@ -142,14 +142,14 @@ function MoleculesTable() {
     // The API takes whole particles.
     min_particles: Math.trunc(Number(useDebounced(minParticles, 300))) || undefined
   };
+  // Only the boxes whose pause just ended: another box's value can be stale, still inside its
+  // own debounce after a chip or Clear all emptied it, and would put its filter back.
+  const prevTyped = useRef(typed);
   useEffect(() => {
-    if (
-      typed.q !== search.q ||
-      typed.max_resolution !== search.max_resolution ||
-      typed.max_nomask_resolution !== search.max_nomask_resolution ||
-      typed.min_particles !== search.min_particles
-    ) {
-      filter(typed);
+    const keys = (Object.keys(typed) as (keyof typeof typed)[]).filter(k => typed[k] !== prevTyped.current[k]);
+    prevTyped.current = typed;
+    if (keys.some(k => typed[k] !== search[k])) {
+      filter(Object.fromEntries(keys.map(k => [k, typed[k]])));
     }
   }, [typed.q, typed.max_resolution, typed.max_nomask_resolution, typed.min_particles]);
 
