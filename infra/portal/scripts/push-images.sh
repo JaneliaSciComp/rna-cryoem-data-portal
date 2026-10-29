@@ -19,12 +19,12 @@ repo=$registry/rna-portal-$ws
 
 aws ecr get-login-password --region "$region" | docker login --username AWS --password-stdin "$registry"
 
-docker build --platform linux/amd64 -f "$repo_root/portal/backend/Dockerfile" -t "$repo/api:$tag" "$repo_root/portal"
+docker build --pull --platform linux/amd64 -f "$repo_root/portal/backend/Dockerfile" -t "$repo/api:$tag" "$repo_root/portal"
 # The scanner task wraps the image's command in flock (compute.tf); fail here, not at 3 a.m.
 docker run --rm --platform linux/amd64 --entrypoint flock "$repo/api:$tag" --version
 docker push "$repo/api:$tag"
 
-docker build --platform linux/amd64 --build-arg COGNITO_CLIENT_ID="$client_id" \
+docker build --pull --platform linux/amd64 --build-arg COGNITO_CLIENT_ID="$client_id" \
   -f "$repo_root/infra/portal/nginx/Dockerfile" -t "$repo/nginx:$tag" "$repo_root"
 docker push "$repo/nginx:$tag"
 
