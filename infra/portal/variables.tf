@@ -47,3 +47,20 @@ variable "drive_service_account_secret_arn" {
   type        = string
   default     = ""
 }
+
+variable "collection_sheet_id" {
+  description = "Google Sheet id of the team's data collection sheet, shared with the Drive service account. Empty: the scanner doesn't read it. Requires drive_service_account_secret_arn."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.collection_sheet_id == "" || var.drive_service_account_secret_arn != ""
+    error_message = "collection_sheet_id needs drive_service_account_secret_arn: the sheet is read as that service account."
+  }
+}
+
+variable "collection_sheet_gid" {
+  description = "The sheet's tab to read: the gid in its URL."
+  type        = string
+  default     = "0"
+}

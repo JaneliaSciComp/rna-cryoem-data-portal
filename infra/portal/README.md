@@ -312,6 +312,10 @@ update it there if `terraform output -raw portal_url` changes.
   --secret-string file://key.json`), and set `drive_folder_id` and
   `drive_service_account_secret_arn`. The apply replaces the instance. Delete `key.json`
   afterwards.
+- **Data collection sheet (optional):** share the team's sheet with the same service account
+  as Viewer, and set `collection_sheet_id` and `collection_sheet_gid` (the `gid` in the URL of
+  the tab whose Grid Name column holds molecule folder names).
+  The next scan reads it.
 
 ## Operating
 

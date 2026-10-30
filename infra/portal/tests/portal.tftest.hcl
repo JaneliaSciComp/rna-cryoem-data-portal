@@ -143,6 +143,14 @@ run "drive_needs_both_inputs" {
   expect_failures = [aws_launch_template.ecs]
 }
 
+run "sheet_needs_the_drive_key" {
+  command = plan
+  variables {
+    collection_sheet_id = "1AbCdEf"
+  }
+  expect_failures = [var.collection_sheet_id]
+}
+
 run "no_empty_env_values" {
   command = apply
   # ECS drops empty-string environment entries at registration, so an image default would win

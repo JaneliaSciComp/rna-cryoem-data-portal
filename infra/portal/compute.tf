@@ -159,8 +159,11 @@ resource "aws_iam_role_policy_attachment" "execution" {
 
 data "aws_iam_policy_document" "execution" {
   statement {
-    actions   = ["secretsmanager:GetSecretValue"]
-    resources = [aws_secretsmanager_secret.db_url.arn, aws_secretsmanager_secret.typesense_api_key.arn]
+    actions = ["secretsmanager:GetSecretValue"]
+    resources = concat(
+      [aws_secretsmanager_secret.db_url.arn, aws_secretsmanager_secret.typesense_api_key.arn],
+      [for s in local.sheet_secrets : s.valueFrom],
+    )
   }
 }
 
@@ -184,6 +187,12 @@ locals {
     { name = "CATALOG_DB_URL", valueFrom = aws_secretsmanager_secret.db_url.arn },
     { name = "CATALOG_TYPESENSE_API_KEY", valueFrom = aws_secretsmanager_secret.typesense_api_key.arn },
   ]
+  # The scanner's data collection sheet, when one is configured.
+  sheet_env = var.collection_sheet_id == "" ? [] : [
+    { name = "CATALOG_SHEET_ID", value = var.collection_sheet_id },
+    { name = "CATALOG_SHEET_GID", value = var.collection_sheet_gid },
+  ]
+  sheet_secrets = var.collection_sheet_id == "" ? [] : [{ name = "CATALOG_SHEET_KEY", valueFrom = var.drive_service_account_secret_arn }]
 
   log = { for c in ["nginx", "api", "mrc-ng-server", "typesense", "scanner"] : c => {
     logDriver = "awslogs"
@@ -342,8 +351,8 @@ resource "aws_ecs_task_definition" "scanner" {
     # concurrencyPolicy: Forbid, so a run that finds a scan in progress exits 0.
     # ponytail: host lock, relies on the single instance. Use a DB advisory lock if the ASG grows.
     command     = ["sh", "-c", "umask 002 && exec flock -n -E 0 /locks/scan.lock pixi run scan"]
-    environment = concat(local.catalog_env, [{ name = "CATALOG_RCLONE_SOCKET", value = "/rclone-rc/data.sock" }])
-    secrets     = local.catalog_secrets
+    environment = concat(local.catalog_env, [{ name = "CATALOG_RCLONE_SOCKET", value = "/rclone-rc/data.sock" }], local.sheet_env)
+    secrets     = concat(local.catalog_secrets, local.sheet_secrets)
     mountPoints = [
       { sourceVolume = "data", containerPath = "/data", readOnly = true },
       { sourceVolume = "caches", containerPath = "/caches", readOnly = false },
