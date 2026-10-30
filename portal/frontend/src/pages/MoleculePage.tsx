@@ -2,14 +2,13 @@ import {
   Alert, Box, Button, CircularProgress, Link as MuiLink, List, ListItem, MenuItem, Paper, Stack,
   Table, TableBody, TableCell, TableRow, TextField, Typography
 } from '@mui/material';
-import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { type ReactNode, useState } from 'react';
 import { NotFound, moleculeQuery } from '../api';
 import { formatBytes, formatCount, formatResolution } from '../format';
 import { Gallery } from '../molecule/Gallery';
-import { MetadataDrawer, MetadataTable } from '../molecule/MetadataDrawer';
+import { MetadataTable } from '../molecule/MetadataTable';
 import { SOURCE_LABEL, groupFiles } from '../molecule/groupFiles';
 import { formatFor } from '../molecule/loadMolstar';
 import { MolstarViewer } from '../molecule/MolstarViewer';
@@ -45,7 +44,6 @@ function Collection({ rows }: { readonly rows: Record<string, string>[] }) {
 export function MoleculePage({ id }: { readonly id: string }) {
   const { data: m, isPending, error } = useQuery(moleculeQuery(id));
   const [modelId, setModelId] = useState<number | null>(null);
-  const [metadataOpen, setMetadataOpen] = useState(false);
 
   if (isPending) {
     return <CircularProgress />;
@@ -68,14 +66,9 @@ export function MoleculePage({ id }: { readonly id: string }) {
     <Stack spacing={3}>
       <Box>
         <Link to="/">← All molecules</Link>
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
-          <Typography component="h1" variant="h4">
-            {m.name}
-          </Typography>
-          <Button onClick={() => setMetadataOpen(true)} size="small" startIcon={<InfoOutlinedIcon />} variant="contained">
-            Data collection parameters
-          </Button>
-        </Box>
+        <Typography component="h1" variant="h4">
+          {m.name}
+        </Typography>
         <Typography color="text.secondary">
           {m.id}
           {m.pdb_id ? (
@@ -92,22 +85,29 @@ export function MoleculePage({ id }: { readonly id: string }) {
         </Typography>
       </Box>
 
-      <Section title="Structure">
-        {model ? (
-          <Stack spacing={2}>
-            <TextField label="Model" onChange={e => setModelId(Number(e.target.value))} select size="small" value={model.id}>
-              {g.models.map(f => (
-                <MenuItem key={f.id} value={f.id}>
-                  {SOURCE_LABEL[f.source]}: {f.name}
-                </MenuItem>
-              ))}
-            </TextField>
-            <MolstarViewer format={formatFor(model.name)} url={model.url} />
-          </Stack>
-        ) : (
-          <Typography color="text.secondary">No atomic models found.</Typography>
-        )}
-      </Section>
+      {/* Side by side from md up, the structure taking two thirds; stacked below md. */}
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 2fr) minmax(0, 1fr)' }, gap: 3, alignItems: 'start' }}>
+        <Section title="Structure">
+          {model ? (
+            <Stack spacing={2}>
+              <TextField label="Model" onChange={e => setModelId(Number(e.target.value))} select size="small" value={model.id}>
+                {g.models.map(f => (
+                  <MenuItem key={f.id} value={f.id}>
+                    {SOURCE_LABEL[f.source]}: {f.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <MolstarViewer format={formatFor(model.name)} url={model.url} />
+            </Stack>
+          ) : (
+            <Typography color="text.secondary">No atomic models found.</Typography>
+          )}
+        </Section>
+
+        <Section title="Data collection parameters">
+          <Collection rows={m.collections} />
+        </Section>
+      </Box>
 
       <Section title="Maps">
         {g.maps.length === 0 ? (
@@ -162,10 +162,6 @@ export function MoleculePage({ id }: { readonly id: string }) {
           </List>
         )}
       </Section>
-
-      <MetadataDrawer eyebrow="Data collection parameters" onClose={() => setMetadataOpen(false)} open={metadataOpen} title={m.name}>
-        <Collection rows={m.collections} />
-      </MetadataDrawer>
     </Stack>
   );
 }

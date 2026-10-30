@@ -1,5 +1,4 @@
 import { screen, within } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { mockFetch, renderApp } from '../test/renderApp';
 
 vi.mock('../molecule/loadMolstar', async importOriginal => ({
@@ -43,9 +42,7 @@ test('shows the molecule', async () => {
   expect(screen.getByRole('img', { name: 'm1.png' })).toHaveAttribute('src', '/api/files/5');
   expect(screen.getByRole('link', { name: 'validation.pdf' })).toHaveAttribute('href', '/api/files/6');
 
-  // The sheet row is in the metadata drawer, one line per column, and not on the page itself.
-  expect(screen.queryByRole('row', { name: /Microscope/ })).not.toBeInTheDocument();
-  await userEvent.click(screen.getByRole('button', { name: 'Data collection parameters' }));
+  // One line per column of the molecule's sheet row.
   expect(screen.getByRole('row', { name: /Microscope/ })).toHaveTextContent('Janelia Krios4');
   expect(screen.getByRole('row', { name: /Movies/ })).toHaveTextContent('12345');
 });
@@ -53,7 +50,6 @@ test('shows the molecule', async () => {
 test('warns when the sheet has more than one row for the molecule', async () => {
   mockFetch({ '/api/molecules/Mol9_gRNAde': { ...MOL9, collections: [{ Movies: '1' }, { Movies: '2' }] } });
   renderApp('/molecules/Mol9_gRNAde');
-  await userEvent.click(await screen.findByRole('button', { name: 'Data collection parameters' }));
   expect(await screen.findByText(/sheet has 2 rows for this molecule/)).toBeInTheDocument();
   expect(screen.queryByRole('row', { name: /Movies/ })).not.toBeInTheDocument();
 });
@@ -63,7 +59,6 @@ test('shows a message when there are no models', async () => {
   renderApp('/molecules/Mol5_Plots');
   expect(await screen.findByText('No atomic models found.')).toBeInTheDocument();
   expect(screen.getByText('No maps found.')).toBeInTheDocument();
-  await userEvent.click(screen.getByRole('button', { name: 'Data collection parameters' }));
   expect(screen.getByText('Not in the data collection sheet.')).toBeInTheDocument();
 });
 
