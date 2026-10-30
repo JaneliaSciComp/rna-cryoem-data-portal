@@ -55,8 +55,9 @@ class MoleculeSummary(BaseModel):
     nomask_resolution_a: float | None
     particle_count: int | None
     thumbnail_url: str | None
-    n_models: int
-    n_maps: int
+    # From the molecule's row in the data collection sheet, when it has exactly one.
+    movies: int | None
+    microscope: str | None
     scanned_at: datetime
 
 
@@ -135,7 +136,7 @@ def list_molecules(
                 id=d["molecule_id"], name=d["name"], pdb_id=d.get("pdb_id"),
                 resolution_a=d.get("resolution_a"), nomask_resolution_a=d.get("nomask_resolution_a"),
                 particle_count=d.get("particle_count"), thumbnail_url=_thumbnail_url(d.get("thumbnail_path")),
-                n_models=d["n_models"], n_maps=d["n_maps"], scanned_at=d["scanned_at"],
+                movies=d.get("movies"), microscope=d.get("microscope"), scanned_at=d["scanned_at"],
             )
             for d in (hit["document"] for hit in r["hits"])
         ],

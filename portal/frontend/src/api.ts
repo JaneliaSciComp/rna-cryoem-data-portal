@@ -12,8 +12,9 @@ export type MoleculeSummary = {
   nomask_resolution_a: number | null;
   particle_count: number | null;
   thumbnail_url: string | null;
-  n_models: number;
-  n_maps: number;
+  // From the molecule's row in the data collection sheet, when it has exactly one.
+  movies: number | null;
+  microscope: string | null;
   scanned_at: string;
 };
 
@@ -33,8 +34,8 @@ export type SortKey =
   | 'resolution_a'
   | 'nomask_resolution_a'
   | 'particle_count'
-  | 'n_models'
-  | 'n_maps'
+  | 'movies'
+  | 'microscope'
   | 'scanned_at';
 
 export type MoleculeSearch = {
@@ -57,8 +58,8 @@ const SORT_KEYS: readonly SortKey[] = [
   'resolution_a',
   'nomask_resolution_a',
   'particle_count',
-  'n_models',
-  'n_maps',
+  'movies',
+  'microscope',
   'scanned_at'
 ];
 const positive = (v: unknown) => (Number(v) > 0 && Number.isFinite(Number(v)) ? Number(v) : undefined);
@@ -106,7 +107,7 @@ export type MoleculeFile = {
   url: string;
 };
 
-export type MoleculeDetail = Omit<MoleculeSummary, 'n_models' | 'n_maps'> & {
+export type MoleculeDetail = Omit<MoleculeSummary, 'movies' | 'microscope'> & {
   // The data collection sheet's rows for this molecule: {column: value}. Meant to be one; more is a mistake in the sheet.
   collections: Record<string, string>[];
   files: MoleculeFile[];

@@ -85,7 +85,8 @@ def test_list_molecules(client):
     mol9 = body["molecules"][1]
     assert (mol9["name"], mol9["pdb_id"], mol9["resolution_a"]) == ("gRNAde", "10ZT", 2.97)
     assert (mol9["nomask_resolution_a"], mol9["particle_count"]) == (3.5, 479673)
-    assert (mol9["n_models"], mol9["n_maps"]) == (2, 1)
+    assert (mol9["movies"], mol9["microscope"]) == (12345, "Janelia Krios4")
+    assert (body["molecules"][2]["movies"], body["molecules"][2]["microscope"]) == (None, None)
     assert mol9["thumbnail_url"] == "/api/thumbnails/Mol9_gRNAde.png"
     assert mol9["scanned_at"] == "2026-10-01T00:00:00Z"
     assert body["molecules"][2]["thumbnail_url"] is None
@@ -127,7 +128,8 @@ def test_facets_count_within_the_results(client):
     ("nomask_resolution_a", "asc", ["Mol9_gRNAde", "Mol2_alpha", "Mol 9"]),
     ("particle_count", "desc", ["Mol9_gRNAde", "Mol2_alpha", "Mol 9"]),
     ("pdb_id", "asc", ["Mol9_gRNAde", "Mol2_alpha", "Mol 9"]),
-    ("n_models", "desc", ["Mol9_gRNAde", "Mol2_alpha", "Mol 9"]),
+    ("movies", "desc", ["Mol9_gRNAde", "Mol2_alpha", "Mol 9"]),
+    ("microscope", "asc", ["Mol9_gRNAde", "Mol2_alpha", "Mol 9"]),
     ("name", "desc", ["Mol 9", "Mol9_gRNAde", "Mol2_alpha"]),
 ])
 def test_sort(client, sort, order, expected):

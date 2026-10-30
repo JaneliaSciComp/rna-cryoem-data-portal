@@ -9,6 +9,7 @@ import json
 import logging
 import sys
 import time
+from collections import defaultdict
 from functools import cache
 
 import httpx
@@ -16,7 +17,7 @@ from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, selectinload
 
 from rna_portal import config, db
-from rna_portal.models import Kind, Molecule
+from rna_portal.models import Molecule, SheetCollection
 
 log = logging.getLogger("rna_portal.search")
 
@@ -29,8 +30,8 @@ FIELDS = [
     {"name": "resolution_a", "type": "float", "optional": True},
     {"name": "nomask_resolution_a", "type": "float", "optional": True},
     {"name": "particle_count", "type": "int32", "optional": True},
-    {"name": "n_models", "type": "int32"},
-    {"name": "n_maps", "type": "int32"},
+    {"name": "movies", "type": "int32", "optional": True},
+    {"name": "microscope", "type": "string", "optional": True, "sort": True},
     {"name": "scanned_at", "type": "int64"},  # Unix seconds
     {"name": "thumbnail_path", "type": "string", "optional": True, "index": False},
     {"name": "kinds", "type": "string[]", "facet": True},
@@ -40,7 +41,7 @@ FIELDS = [
 SORT_FIELDS = {
     "name": "name", "pdb_id": "pdb_id", "resolution_a": "resolution_a",
     "nomask_resolution_a": "nomask_resolution_a", "particle_count": "particle_count",
-    "n_models": "n_models", "n_maps": "n_maps", "scanned_at": "scanned_at",
+    "movies": "movies", "microscope": "microscope", "scanned_at": "scanned_at",
 }
 _OPTIONAL = {f["name"] for f in FIELDS if f.get("optional")}
 
@@ -59,13 +60,15 @@ def client() -> httpx.Client:
     )
 
 
-def document(m: Molecule) -> dict:
+def document(m: Molecule, sheet_rows: list[dict[str, str]]) -> dict:
+    """`sheet_rows`: the data collection sheet's rows for the molecule. Only a single row counts:
+    a duplicate is the sheet's mistake (the scan logs it), and picking one would hide it."""
+    row = sheet_rows[0] if len(sheet_rows) == 1 else {}
     doc = {
         "id": m.id, "molecule_id": m.id, "name": m.name,
         "pdb_id": m.pdb_id, "resolution_a": m.resolution_a,
         "nomask_resolution_a": m.nomask_resolution_a, "particle_count": m.particle_count,
-        "n_models": sum(f.kind == Kind.MODEL for f in m.files),
-        "n_maps": sum(f.kind == Kind.MAP for f in m.files),
+        "movies": _int(row.get("Movies")), "microscope": row.get("Microscope"),
         "scanned_at": int(m.scanned_at.timestamp()),
         "thumbnail_path": m.thumbnail_path,
         "kinds": sorted({f.kind for f in m.files}),
@@ -74,10 +77,22 @@ def document(m: Molecule) -> dict:
     return {k: v for k, v in doc.items() if v is not None}
 
 
+def _int(v: str | None) -> int | None:
+    """A sheet count such as "12,345"; None when blank or not a number."""
+    try:
+        return int(v.replace(",", ""))
+    except (AttributeError, ValueError):
+        return None
+
+
 def reindex(engine: Engine) -> int:
     """Build a fresh index of every molecule and switch the alias to it. Returns the count."""
     with Session(engine) as session:
-        docs = [document(m) for m in session.scalars(select(Molecule).options(selectinload(Molecule.files)))]
+        rows = defaultdict(list)
+        for name, fields in session.execute(select(SheetCollection.name, SheetCollection.fields)):
+            rows[name].append(fields)
+        molecules = session.scalars(select(Molecule).options(selectinload(Molecule.files)))
+        docs = [document(m, rows[m.id]) for m in molecules]
     c = client()
     name = f"{ALIAS}_{time.time_ns()}"
     c.post("/collections", json={"name": name, "fields": FIELDS}).raise_for_status()

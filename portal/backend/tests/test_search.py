@@ -35,7 +35,7 @@ def test_empty_catalog_indexes_nothing(engine, typesense):
 def test_failed_reindex_keeps_the_previous_index(engine, typesense, monkeypatch):
     search.reindex(engine)
     before = aliased(typesense)
-    monkeypatch.setattr(search, "document", lambda m: {"id": m.id})  # missing required fields
+    monkeypatch.setattr(search, "document", lambda m, rows: {"id": m.id})  # missing required fields
     with Session(engine) as s:
         s.add(Molecule(id="Mol1", name="One", scanned_at=NOW))
         s.commit()

@@ -4,11 +4,11 @@ import { mockFetch, renderApp } from '../test/renderApp';
 
 const MOL9 = {
   id: 'Mol9_gRNAde', name: 'gRNAde', pdb_id: '10ZT', resolution_a: 2.9663, nomask_resolution_a: 3.5678, particle_count: 479673,
-  thumbnail_url: '/api/thumbnails/Mol9_gRNAde.png', n_models: 6, n_maps: 3, scanned_at: '2026-10-01T12:00:00Z'
+  thumbnail_url: '/api/thumbnails/Mol9_gRNAde.png', movies: 12345, microscope: 'Janelia Krios4', scanned_at: '2026-10-01T12:00:00Z'
 };
 const MOL23 = {
   id: 'Mol23_TrpHolo', name: 'TrpHolo', pdb_id: null, resolution_a: null, nomask_resolution_a: null, particle_count: null,
-  thumbnail_url: null, n_models: 0, n_maps: 0, scanned_at: '2026-10-01T12:00:00Z'
+  thumbnail_url: null, movies: null, microscope: null, scanned_at: '2026-10-01T12:00:00Z'
 };
 const page = (molecules: object[], found = molecules.length, facets = {}, total = 30) => ({ found, total, molecules, facets });
 // The URLs the page fetched molecules from, as their query strings.
@@ -26,6 +26,8 @@ test('lists the molecules', async () => {
   expect(screen.getByText('2.97 Å')).toBeInTheDocument();
   expect(screen.getByText('3.57 Å')).toBeInTheDocument();
   expect(screen.getByText('479,673')).toBeInTheDocument();
+  expect(screen.getByText('12,345')).toBeInTheDocument();
+  expect(screen.getByText('Janelia Krios4')).toBeInTheDocument();
   expect(screen.getByRole('img', { name: 'gRNAde' })).toHaveAttribute('src', '/api/thumbnails/Mol9_gRNAde.png');
   expect(screen.getByLabelText('No thumbnail for TrpHolo')).toBeInTheDocument();
 });

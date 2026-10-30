@@ -288,8 +288,18 @@ function MoleculesTable() {
         size: 120,
         Cell: ({ row: { original: m } }) => formatCount(m.particle_count)
       },
-      { accessorKey: 'n_models', header: 'Models', size: 110 },
-      { accessorKey: 'n_maps', header: 'Maps', size: 100 },
+      {
+        accessorKey: 'movies',
+        header: 'Movies',
+        size: 110,
+        Cell: ({ row: { original: m } }) => formatCount(m.movies)
+      },
+      {
+        accessorKey: 'microscope',
+        header: 'Microscope',
+        size: 150,
+        Cell: ({ row: { original: m } }) => m.microscope ?? '—'
+      },
       {
         accessorKey: 'scanned_at',
         header: 'Last changed',
