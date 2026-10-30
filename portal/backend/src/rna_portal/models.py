@@ -2,7 +2,7 @@
 from datetime import datetime
 from enum import StrEnum
 
-from sqlalchemy import BigInteger, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, BigInteger, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -60,3 +60,13 @@ class MoleculeFile(Base):
     size: Mapped[int] = mapped_column(BigInteger)
     mtime: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     molecule: Mapped[Molecule] = relationship(back_populates="files")
+
+
+class SheetCollection(Base):
+    """One row of the team's data collection sheet (sheet.py). Keyed by its grid name, not by
+    molecule: the sheet also lists grids that aren't on the portal. Each scan replaces the table."""
+    __tablename__ = "sheet_collection"
+
+    id: Mapped[int] = mapped_column(primary_key=True)  # sheet order
+    name: Mapped[str] = mapped_column(Text, index=True)  # the molecule folder, when it's on the portal
+    fields: Mapped[dict[str, str]] = mapped_column(JSON)  # {column: value}; JSON, not JSONB, keeps column order

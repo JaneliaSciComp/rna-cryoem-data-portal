@@ -22,6 +22,7 @@ gemmi = ">=0.6"
 numpy = "*"
 pytest = "*"
 httpx = "*"
+google-auth = ">=2.62.0,<3"
 
 [pypi-dependencies]
 rna-portal = { path = "./backend", editable = true }

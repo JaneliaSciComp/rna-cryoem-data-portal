@@ -40,3 +40,19 @@ def typesense_url() -> str | None:
 def typesense_api_key() -> str:
     """Required once CATALOG_TYPESENSE_URL is set."""
     return os.environ["CATALOG_TYPESENSE_API_KEY"]
+
+
+def sheet_id() -> str | None:
+    """The team's data collection sheet. Unset: the scanner doesn't read it."""
+    return os.environ.get("CATALOG_SHEET_ID") or None
+
+
+def sheet_gid() -> str:
+    """The sheet's tab to read (the gid in its URL)."""
+    return os.environ.get("CATALOG_SHEET_GID", "0")
+
+
+def sheet_key() -> str:
+    """The service account's JSON key, which the sheet is shared with. Required once
+    CATALOG_SHEET_ID is set."""
+    return os.environ["CATALOG_SHEET_KEY"]
