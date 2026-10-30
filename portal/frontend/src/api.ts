@@ -107,6 +107,8 @@ export type MoleculeFile = {
 };
 
 export type MoleculeDetail = Omit<MoleculeSummary, 'n_models' | 'n_maps'> & {
+  // The data collection sheet's rows for this molecule: {column: value}. Meant to be one; more is a mistake in the sheet.
+  collections: Record<string, string>[];
   files: MoleculeFile[];
 };
 

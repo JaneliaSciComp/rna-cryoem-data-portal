@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from rna_portal import search
 from rna_portal.api import app, get_session
-from rna_portal.models import Molecule, MoleculeFile
+from rna_portal.models import Molecule, MoleculeFile, SheetCollection
 
 NOW = datetime(2026, 10, 1, tzinfo=timezone.utc)
 
@@ -38,6 +38,12 @@ def client(engine, typesense, tmp_path, monkeypatch):
                 ],
             ),
             Molecule(id="Mol 9", name="Mol 9", scanned_at=NOW),
+            SheetCollection(name="Mol9_gRNAde", fields={"Microscope": "Janelia Krios4", "Movies": "12,345"}),
+            SheetCollection(name="Mol9", fields={"Microscope": "Krios4"}),  # not its folder
+            SheetCollection(name="Mol2_alpha", fields={"Microscope": "Krios3", "Movies": "5000"}),
+            # Two rows: a mistake in the sheet, so the list shows neither.
+            SheetCollection(name="Mol 9", fields={"Microscope": "Krios1", "Movies": "1"}),
+            SheetCollection(name="Mol 9", fields={"Microscope": "Krios2"}),
             Molecule(
                 id="Mol2_alpha", name="alpha", resolution_a=3.5, nomask_resolution_a=4.1, particle_count=200000,
                 scanned_at=NOW,
@@ -158,6 +164,7 @@ def test_molecule_detail(client):
     body = client.get("/molecules/Mol9_gRNAde").json()
     assert body["nomask_resolution_a"] == 3.5
     assert body["particle_count"] == 479673
+    assert body["collections"] == [{"Microscope": "Janelia Krios4", "Movies": "12,345"}]
     by_name = {x["name"]: x for x in body["files"]}
     pdb = by_name["10ZT.pdb"]
     assert (pdb["kind"], pdb["source"], pdb["path"]) == ("model", "deposited", "Mol9_gRNAde/PDB_deposit/10ZT.pdb")
@@ -167,7 +174,7 @@ def test_molecule_detail(client):
 
 def test_molecule_id_with_space(client):
     r = client.get("/molecules/Mol%209")
-    assert r.status_code == 200 and r.json()["files"] == []
+    assert r.status_code == 200 and r.json()["files"] == [] and len(r.json()["collections"]) == 2
 
 
 def test_unknown_molecule_is_404(client):

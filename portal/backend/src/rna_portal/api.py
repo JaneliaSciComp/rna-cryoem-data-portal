@@ -19,7 +19,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from rna_portal import config, db, search
-from rna_portal.models import Kind, Molecule, MoleculeFile
+from rna_portal.models import Kind, Molecule, MoleculeFile, SheetCollection
 
 app = FastAPI(title="RNA AI CryoEM data portal")
 
@@ -80,6 +80,9 @@ class MoleculeDetail(BaseModel):
     particle_count: int | None
     thumbnail_url: str | None
     scanned_at: datetime
+    # The data collection sheet's rows for this molecule's folder, in sheet order (sheet.py).
+    # Meant to be one; more is a mistake in the sheet, which the page reports.
+    collections: list[dict[str, str]]
     files: list[FileOut]
 
 
@@ -149,6 +152,9 @@ def get_molecule(molecule_id: str, session: Session = Depends(get_session)):
         id=m.id, name=m.name, pdb_id=m.pdb_id, resolution_a=m.resolution_a,
         nomask_resolution_a=m.nomask_resolution_a, particle_count=m.particle_count,
         thumbnail_url=_thumbnail_url(m.thumbnail_path), scanned_at=m.scanned_at,
+        collections=session.scalars(
+            select(SheetCollection.fields).where(SheetCollection.name == m.id).order_by(SheetCollection.id)
+        ).all(),
         files=[_file_out(f) for f in m.files],
     )
 

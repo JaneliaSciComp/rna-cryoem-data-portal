@@ -1,4 +1,5 @@
 import { screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { mockFetch, renderApp } from '../test/renderApp';
 
 vi.mock('../molecule/loadMolstar', async importOriginal => ({
@@ -13,6 +14,7 @@ const f = (id: number, path: string, kind: string, source: string, size = 1000) 
 const MOL9 = {
   id: 'Mol9_gRNAde', name: 'gRNAde', pdb_id: '10ZT', resolution_a: 2.97, nomask_resolution_a: 3.5, particle_count: 479673,
   thumbnail_url: null, scanned_at: '2026-10-01T12:00:00Z',
+  collections: [{ Date: '2025/01/02', Microscope: 'Janelia Krios4', Movies: '12345' }],
   files: [
     f(1, 'Mol9_gRNAde/AlphaFold/model_0.cif', 'model', 'predicted'),
     f(2, 'Mol9_gRNAde/PDB_deposit/10ZT.pdb', 'model', 'deposited'),
@@ -40,13 +42,29 @@ test('shows the molecule', async () => {
   expect(screen.getByRole('img', { name: 'J300_fsc.png' })).toHaveAttribute('src', '/api/files/4');
   expect(screen.getByRole('img', { name: 'm1.png' })).toHaveAttribute('src', '/api/files/5');
   expect(screen.getByRole('link', { name: 'validation.pdf' })).toHaveAttribute('href', '/api/files/6');
+
+  // The sheet row is in the metadata drawer, one line per column, and not on the page itself.
+  expect(screen.queryByRole('row', { name: /Microscope/ })).not.toBeInTheDocument();
+  await userEvent.click(screen.getByRole('button', { name: 'Data collection parameters' }));
+  expect(screen.getByRole('row', { name: /Microscope/ })).toHaveTextContent('Janelia Krios4');
+  expect(screen.getByRole('row', { name: /Movies/ })).toHaveTextContent('12345');
+});
+
+test('warns when the sheet has more than one row for the molecule', async () => {
+  mockFetch({ '/api/molecules/Mol9_gRNAde': { ...MOL9, collections: [{ Movies: '1' }, { Movies: '2' }] } });
+  renderApp('/molecules/Mol9_gRNAde');
+  await userEvent.click(await screen.findByRole('button', { name: 'Data collection parameters' }));
+  expect(await screen.findByText(/sheet has 2 rows for this molecule/)).toBeInTheDocument();
+  expect(screen.queryByRole('row', { name: /Movies/ })).not.toBeInTheDocument();
 });
 
 test('shows a message when there are no models', async () => {
-  mockFetch({ '/api/molecules/Mol5_Plots': { ...MOL9, id: 'Mol5_Plots', name: 'Plots', files: [MOL9.files[3]] } });
+  mockFetch({ '/api/molecules/Mol5_Plots': { ...MOL9, id: 'Mol5_Plots', name: 'Plots', collections: [], files: [MOL9.files[3]] } });
   renderApp('/molecules/Mol5_Plots');
   expect(await screen.findByText('No atomic models found.')).toBeInTheDocument();
   expect(screen.getByText('No maps found.')).toBeInTheDocument();
+  await userEvent.click(screen.getByRole('button', { name: 'Data collection parameters' }));
+  expect(screen.getByText('Not in the data collection sheet.')).toBeInTheDocument();
 });
 
 test('says when the molecule does not exist', async () => {

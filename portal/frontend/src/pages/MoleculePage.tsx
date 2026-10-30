@@ -2,12 +2,14 @@ import {
   Alert, Box, Button, CircularProgress, Link as MuiLink, List, ListItem, MenuItem, Paper, Stack,
   Table, TableBody, TableCell, TableRow, TextField, Typography
 } from '@mui/material';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { type ReactNode, useState } from 'react';
 import { NotFound, moleculeQuery } from '../api';
 import { formatBytes, formatCount, formatResolution } from '../format';
 import { Gallery } from '../molecule/Gallery';
+import { MetadataDrawer, MetadataTable } from '../molecule/MetadataDrawer';
 import { SOURCE_LABEL, groupFiles } from '../molecule/groupFiles';
 import { formatFor } from '../molecule/loadMolstar';
 import { MolstarViewer } from '../molecule/MolstarViewer';
@@ -24,9 +26,26 @@ function Section({ title, children }: { readonly title: string; readonly childre
   );
 }
 
+// The molecule's row in the data collection sheet: one line per column, in sheet order, so editing
+// the sheet edits the table. More than one row is a mistake in the sheet: say so rather than pick one.
+function Collection({ rows }: { readonly rows: Record<string, string>[] }) {
+  if (rows.length === 0) {
+    return <Typography color="text.secondary">Not in the data collection sheet.</Typography>;
+  }
+  if (rows.length > 1) {
+    return (
+      <Alert severity="warning">
+        The data collection sheet has {rows.length} rows for this molecule. Remove the extras to show its parameters.
+      </Alert>
+    );
+  }
+  return <MetadataTable rows={Object.entries(rows[0])} />;
+}
+
 export function MoleculePage({ id }: { readonly id: string }) {
   const { data: m, isPending, error } = useQuery(moleculeQuery(id));
   const [modelId, setModelId] = useState<number | null>(null);
+  const [metadataOpen, setMetadataOpen] = useState(false);
 
   if (isPending) {
     return <CircularProgress />;
@@ -49,9 +68,14 @@ export function MoleculePage({ id }: { readonly id: string }) {
     <Stack spacing={3}>
       <Box>
         <Link to="/">← All molecules</Link>
-        <Typography component="h1" variant="h4">
-          {m.name}
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+          <Typography component="h1" variant="h4">
+            {m.name}
+          </Typography>
+          <Button onClick={() => setMetadataOpen(true)} size="small" startIcon={<InfoOutlinedIcon />} variant="contained">
+            Data collection parameters
+          </Button>
+        </Box>
         <Typography color="text.secondary">
           {m.id}
           {m.pdb_id ? (
@@ -138,6 +162,10 @@ export function MoleculePage({ id }: { readonly id: string }) {
           </List>
         )}
       </Section>
+
+      <MetadataDrawer eyebrow="Data collection parameters" onClose={() => setMetadataOpen(false)} open={metadataOpen} title={m.name}>
+        <Collection rows={m.collections} />
+      </MetadataDrawer>
     </Stack>
   );
 }
