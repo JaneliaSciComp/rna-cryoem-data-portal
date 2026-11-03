@@ -92,23 +92,23 @@ test('pages through the molecules', async () => {
 
 test('searches and filters, showing facet counts', async () => {
   const fetchMock = mockFetch({
-    '/api/molecules': page([MOL23, MOL9], 2, { kinds: { model: 1, map: 1 } }),
+    '/api/molecules': page([MOL23, MOL9], 2, { kinds: { plot: 1, micrograph: 1 } }),
     '/api/molecules?q=holo&page=1&per_page=10': page([]),
-    '/api/molecules?q=holo&kind=map&page=1&per_page=10': page([])
+    '/api/molecules?q=holo&kind=plot&page=1&per_page=10': page([])
   });
   const router = renderApp('/');
   await screen.findByRole('link', { name: 'gRNAde' });
-  expect(screen.getByRole('checkbox', { name: 'Maps (1)' })).not.toBeChecked();
+  expect(screen.getByRole('checkbox', { name: 'Plots (1)' })).not.toBeChecked();
 
   await userEvent.type(screen.getByRole('searchbox', { name: 'Search' }), 'holo');
   expect(await screen.findByText('No molecules match these filters.')).toBeInTheDocument();
   // Debounced: one search for the whole word.
   expect(searches(fetchMock)).toEqual(['page=1&per_page=10', 'q=holo&page=1&per_page=10']);
 
-  await userEvent.click(screen.getByRole('checkbox', { name: 'Maps (0)' }));
-  await waitFor(() => expect(searches(fetchMock)).toContain('q=holo&kind=map&page=1&per_page=10'));
-  expect(screen.getByRole('checkbox', { name: 'Maps (0)' })).toBeChecked();
-  expect(router.state.location.search).toEqual({ q: 'holo', kind: ['map'] });
+  await userEvent.click(screen.getByRole('checkbox', { name: 'Plots (0)' }));
+  await waitFor(() => expect(searches(fetchMock)).toContain('q=holo&kind=plot&page=1&per_page=10'));
+  expect(screen.getByRole('checkbox', { name: 'Plots (0)' })).toBeChecked();
+  expect(router.state.location.search).toEqual({ q: 'holo', kind: ['plot'] });
 });
 
 test('filters by resolution', async () => {
@@ -151,25 +151,25 @@ test('filters by movies and microscope', async () => {
 
 test('shows the results a shared link describes', async () => {
   const fetchMock = mockFetch({ '/api/molecules': page([MOL9], 12) });
-  renderApp('/?q=grna&kind=map&max_resolution=3&sort=resolution_a&order=desc&page=2');
+  renderApp('/?q=grna&kind=plot&max_resolution=3&sort=resolution_a&order=desc&page=2');
 
   await screen.findByRole('link', { name: 'gRNAde' });
-  expect(searches(fetchMock)).toEqual(['q=grna&kind=map&max_resolution=3&sort=resolution_a&order=desc&page=2&per_page=10']);
+  expect(searches(fetchMock)).toEqual(['q=grna&kind=plot&max_resolution=3&sort=resolution_a&order=desc&page=2&per_page=10']);
   expect(screen.getByRole('searchbox', { name: 'Search' })).toHaveValue('grna');
-  expect(screen.getByRole('checkbox', { name: /Maps/ })).toBeChecked();
+  expect(screen.getByRole('checkbox', { name: /Plots/ })).toBeChecked();
   expect(screen.getByRole('spinbutton', { name: 'Max masked resolution' })).toHaveValue(3);
   expect(screen.getByText('11-12 of 12')).toBeInTheDocument();
 });
 
 test('shows the match count and a chip per filter', async () => {
   const fetchMock = mockFetch({ '/api/molecules': page([MOL9], 1) });
-  const router = renderApp('/?kind=map&max_resolution=3&min_particles=300000');
+  const router = renderApp('/?kind=plot&max_resolution=3&min_particles=300000');
 
   expect(await screen.findByText('1 out of 30 total molecules match the selected filters')).toBeInTheDocument();
-  expect(screen.getByText('Has maps')).toBeInTheDocument();
+  expect(screen.getByText('Has plots')).toBeInTheDocument();
   expect(screen.getByText('Particles ≥ 300,000')).toBeInTheDocument();
   await userEvent.click(within(screen.getByText('Masked resolution ≤ 3 Å').closest('.MuiChip-root') as HTMLElement).getByTestId('CancelIcon'));
-  await waitFor(() => expect(router.state.location.search).toEqual({ kind: ['map'], min_particles: 300000 }));
+  await waitFor(() => expect(router.state.location.search).toEqual({ kind: ['plot'], min_particles: 300000 }));
   expect(screen.getByRole('spinbutton', { name: 'Max masked resolution' })).toHaveValue(null);
 
   await userEvent.click(screen.getByRole('button', { name: 'Clear all' }));

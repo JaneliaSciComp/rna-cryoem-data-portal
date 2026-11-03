@@ -42,8 +42,6 @@ import { formatCount, formatResolution } from '../format';
 import { Thumbnail } from '../Thumbnail';
 
 const KINDS: [Kind, string][] = [
-  ['model', 'Models'],
-  ['map', 'Maps'],
   ['micrograph', 'Micrographs'],
   ['plot', 'Plots'],
   ['report', 'Reports'],

@@ -54,7 +54,9 @@ export type MoleculeSearch = {
   per_page?: number;
 };
 
-const KINDS: readonly Kind[] = ['model', 'map', 'plot', 'micrograph', 'report', 'log'];
+// The kinds the list filters by. Models and maps aren't filters, so a link's kind=model or kind=map
+// is dropped rather than narrowing the list with no chip to show it.
+const KINDS: readonly Kind[] = ['plot', 'micrograph', 'report', 'log'];
 const SORT_KEYS: readonly SortKey[] = [
   'name',
   'pdb_id',

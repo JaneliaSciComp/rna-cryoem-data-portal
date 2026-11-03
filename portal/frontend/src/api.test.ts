@@ -18,11 +18,11 @@ test('builds the search URL, repeating list params and dropping blanks', () => {
 });
 
 test('keeps only the valid parts of a search from the URL', () => {
-  expect(parseMoleculeSearch({ q: 10, kind: 'map', max_resolution: 3.5, sort: 'name', order: 'desc', page: 2, per_page: 50 })).toEqual({
-    q: '10', kind: ['map'], max_resolution: 3.5, sort: 'name', order: 'desc', page: 2, per_page: 50
+  expect(parseMoleculeSearch({ q: 10, kind: 'plot', max_resolution: 3.5, sort: 'name', order: 'desc', page: 2, per_page: 50 })).toEqual({
+    q: '10', kind: ['plot'], max_resolution: 3.5, sort: 'name', order: 'desc', page: 2, per_page: 50
   });
-  expect(parseMoleculeSearch({ q: '', kind: ['map', 'nope'], max_resolution: 0, sort: 'path', order: 'up', page: 1.5, per_page: 251 })).toEqual({
-    kind: ['map']
+  expect(parseMoleculeSearch({ q: '', kind: ['plot', 'map', 'nope'], max_resolution: 0, sort: 'path', order: 'up', page: 1.5, per_page: 251 })).toEqual({
+    kind: ['plot']
   });
   expect(parseMoleculeSearch({ max_nomask_resolution: 4, min_particles: 300000, sort: 'particle_count' })).toMatchObject({
     max_nomask_resolution: 4, min_particles: 300000, sort: 'particle_count'
