@@ -122,6 +122,10 @@ export type MoleculeFile = {
 export type MoleculeDetail = Omit<MoleculeSummary, 'movies' | 'microscope'> & {
   // The data collection sheet's rows for this molecule: {column: value}. Meant to be one; more is a mistake in the sheet.
   collections: Record<string, string>[];
+  // From the cryoSPARC log, like the resolutions.
+  fsc05_a: number | null;
+  nomask_fsc05_a: number | null;
+  point_group: string | null;
   files: MoleculeFile[];
 };
 
