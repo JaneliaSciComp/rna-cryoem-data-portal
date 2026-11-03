@@ -24,7 +24,10 @@ def test_collections_groups_rows_by_grid_name():
     }
 
 
-@pytest.mark.parametrize("text", ["", "Index,Date,Name\n1,2025/01/01,Mol9_gRNAde\n"])
-def test_collections_without_a_header_row_is_an_error(text):
+@pytest.mark.parametrize("text", [
+    "", "Index,Date,Name\n1,2025/01/01,Mol9_gRNAde\n",
+    "Grid Name,Movies,Movies\nMol9_gRNAde,1,2\n",  # a duplicate column would silently win
+])
+def test_collections_without_a_usable_header_row_is_an_error(text):
     with pytest.raises(ValueError):
         collections(text)

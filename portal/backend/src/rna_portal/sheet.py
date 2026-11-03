@@ -40,6 +40,9 @@ def collections(text: str) -> dict[str, list[dict[str, str]]]:
     if at is None:
         raise ValueError(f"no {NAME_COLUMN!r} header row")
     header = [c.strip() for c in rows[at]]
+    if dup := {h for h in header if h and header.count(h) > 1}:
+        # zip(header, row) would keep only the last column of each.
+        raise ValueError(f"duplicate header columns: {sorted(dup)}")
     out: dict[str, list[dict[str, str]]] = {}
     for row in rows[at + 1:]:
         fields = {h: v.strip() for h, v in zip(header, row) if h and v.strip()}
