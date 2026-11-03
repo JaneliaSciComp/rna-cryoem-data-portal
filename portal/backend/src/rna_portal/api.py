@@ -79,6 +79,9 @@ class MoleculeDetail(BaseModel):
     resolution_a: float | None
     nomask_resolution_a: float | None
     particle_count: int | None
+    fsc05_a: float | None
+    nomask_fsc05_a: float | None
+    point_group: str | None
     thumbnail_url: str | None
     scanned_at: datetime
     # The data collection sheet's rows for this molecule's folder, in sheet order (sheet.py).
@@ -158,6 +161,7 @@ def get_molecule(molecule_id: str, session: Session = Depends(get_session)):
     return MoleculeDetail(
         id=m.id, name=m.name, pdb_id=m.pdb_id, resolution_a=m.resolution_a,
         nomask_resolution_a=m.nomask_resolution_a, particle_count=m.particle_count,
+        fsc05_a=m.fsc05_a, nomask_fsc05_a=m.nomask_fsc05_a, point_group=m.point_group,
         thumbnail_url=_thumbnail_url(m.thumbnail_path), scanned_at=m.scanned_at,
         collections=session.scalars(
             select(SheetCollection.fields).where(SheetCollection.name == m.id).order_by(SheetCollection.id)

@@ -5,7 +5,7 @@ from pathlib import Path
 
 # Bump when a change here would give existing molecules different facts: the next scan then
 # re-reads every molecule stamped with an older version, even if its files haven't changed.
-PARSER_VERSION = 2
+PARSER_VERSION = 3
 
 _MOL_PREFIX = re.compile(r"^mol\d+_", re.IGNORECASE)
 _PDB_ID = re.compile(r"[0-9][A-Za-z0-9]{3}")
@@ -52,6 +52,31 @@ def nomask_resolution_a(log_path: Path) -> float | None:
     """No-mask GSFSC resolution in Å from a cryoSPARC job's exported JSON log: the best
     `latest_summary_stats.fsc_info_best.radwn_nomask_A` across its volume output groups."""
     return _best_fsc(_load(log_path), "radwn_nomask_A")
+
+
+def fsc05_a(log_path: Path) -> float | None:
+    """Masked resolution in Å at FSC 0.5, the 0.5 counterpart of resolution_a: v4's
+    `radwn_tightmask_05_A`; v5 has no `radwn_final_05_A`, so `radwn_autotight_noisesub_05_A`, the
+    curve whose 0.143 value v5 reports as `radwn_final_A`."""
+    doc = _load(log_path)
+    v4 = str(doc.get("version", "")).startswith("v4")
+    return _best_fsc(doc, "radwn_tightmask_05_A" if v4 else "radwn_autotight_noisesub_05_A")
+
+
+def nomask_fsc05_a(log_path: Path) -> float | None:
+    """No-mask resolution in Å at FSC 0.5: `radwn_nomask_05_A`."""
+    return _best_fsc(_load(log_path), "radwn_nomask_05_A")
+
+
+def point_group(log_path: Path) -> str | None:
+    """The refinement's symmetry (C1, D2, ...): `refine_symmetry` from the job's params the user
+    set (`params_spec`), else cryoSPARC's default (`params_base`)."""
+    doc = _load(log_path)
+    for params in ("params_spec", "params_base"):
+        value = ((doc.get(params) or {}).get("refine_symmetry") or {}).get("value")
+        if isinstance(value, str) and value:
+            return value
+    return None
 
 
 def particle_count(log_path: Path) -> int | None:

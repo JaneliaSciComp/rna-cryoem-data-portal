@@ -35,6 +35,9 @@ class Molecule(Base):
     resolution_a: Mapped[float | None] = mapped_column(Float)
     nomask_resolution_a: Mapped[float | None] = mapped_column(Float)
     particle_count: Mapped[int | None] = mapped_column(Integer)
+    fsc05_a: Mapped[float | None] = mapped_column(Float)
+    nomask_fsc05_a: Mapped[float | None] = mapped_column(Float)
+    point_group: Mapped[str | None] = mapped_column(Text)
     parsed_version: Mapped[int] = mapped_column(Integer, default=0)  # parsers.PARSER_VERSION
     thumbnail_path: Mapped[str | None] = mapped_column(Text)  # relative to the thumbnail dir
     scanned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # last change

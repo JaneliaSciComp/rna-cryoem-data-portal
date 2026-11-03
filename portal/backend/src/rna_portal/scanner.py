@@ -122,6 +122,9 @@ def _sync_molecule(session: Session, root: Path, thumbnails: Path, folder: str, 
         molecule.resolution_a = parsers.resolution_a(job) if job else None
         molecule.nomask_resolution_a = parsers.nomask_resolution_a(job) if job else None
         molecule.particle_count = parsers.particle_count(job) if job else None
+        molecule.fsc05_a = parsers.fsc05_a(job) if job else None
+        molecule.nomask_fsc05_a = parsers.nomask_fsc05_a(job) if job else None
+        molecule.point_group = parsers.point_group(job) if job else None
         molecule.parsed_version = parsers.PARSER_VERSION
         molecule.scanned_at = datetime.now(timezone.utc)
 

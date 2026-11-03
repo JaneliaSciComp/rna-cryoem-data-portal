@@ -78,6 +78,7 @@ def test_first_scan_catalogs_molecules(engine, root, thumbs):
     assert (m.name, m.pdb_id, m.resolution_a) == ("gRNAde", "10ZT", pytest.approx(2.97))
     assert m.nomask_resolution_a == 3.5
     assert m.particle_count == 479673
+    assert (m.nomask_fsc05_a, m.fsc05_a, m.point_group) == (4.84, 3.88, "C1")
     assert m.thumbnail_path == "Mol9_gRNAde.png" and (thumbs / "Mol9_gRNAde.png").is_file()
     assert {(f.path.split("/")[-1], f.kind, f.source) for f in m.files} == {
         ("10ZT.pdb", "model", "deposited"),

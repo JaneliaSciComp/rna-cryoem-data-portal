@@ -29,7 +29,7 @@ def client(engine, typesense, tmp_path, monkeypatch):
         s.add_all([
             Molecule(
                 id="Mol9_gRNAde", name="gRNAde", pdb_id="10ZT", resolution_a=2.97, nomask_resolution_a=3.5,
-                particle_count=479673,
+                particle_count=479673, fsc05_a=3.88, nomask_fsc05_a=4.84, point_group="C1",
                 thumbnail_path="Mol9_gRNAde.png", scanned_at=NOW,
                 files=[
                     f("Mol9_gRNAde/PDB_deposit/10ZT.pdb", "model", "deposited"),
@@ -176,6 +176,7 @@ def test_molecule_detail(client):
     body = client.get("/molecules/Mol9_gRNAde").json()
     assert body["nomask_resolution_a"] == 3.5
     assert body["particle_count"] == 479673
+    assert (body["nomask_fsc05_a"], body["fsc05_a"], body["point_group"]) == (4.84, 3.88, "C1")
     assert body["collections"] == [{"Microscope": "Janelia Krios4", "Movies": "12,345"}]
     by_name = {x["name"]: x for x in body["files"]}
     pdb = by_name["10ZT.pdb"]

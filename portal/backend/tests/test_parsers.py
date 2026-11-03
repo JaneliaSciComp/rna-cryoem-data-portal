@@ -2,7 +2,9 @@ import json
 
 import pytest
 
-from rna_portal.parsers import molecule_name, nomask_resolution_a, particle_count, pdb_id, resolution_a
+from rna_portal.parsers import (
+    fsc05_a, molecule_name, nomask_fsc05_a, nomask_resolution_a, particle_count, pdb_id, point_group, resolution_a
+)
 from samples import cryosparc_log, header_line
 
 
@@ -51,6 +53,8 @@ def test_resolution_from_cryosparc_log(tmp_path):
     assert resolution_a(p) == pytest.approx(2.9664, abs=1e-4)  # radwn_tightmask_A, not radwn_final_A
     assert nomask_resolution_a(p) == 3.5
     assert particle_count(p) == 479673
+    assert (nomask_fsc05_a(p), fsc05_a(p)) == (4.84, 3.88)  # radwn_tightmask_05_A
+    assert point_group(p) == "C1"  # params_base: the default, not set on the job
 
 
 def test_resolution_from_cryosparc_v5_log(tmp_path):
@@ -59,6 +63,13 @@ def test_resolution_from_cryosparc_v5_log(tmp_path):
     assert resolution_a(p) == 2.8  # radwn_final_A
     assert nomask_resolution_a(p) == 3.5
     assert particle_count(p) == 12345
+    assert (nomask_fsc05_a(p), fsc05_a(p)) == (4.84, 3.1)  # radwn_autotight_noisesub_05_A
+
+
+def test_point_group_set_on_the_job(tmp_path):
+    p = tmp_path / "job.log"
+    p.write_text(cryosparc_log(2.8, symmetry="C2"))
+    assert point_group(p) == "C2"
 
 
 def test_nomask_resolution_reads_only_volume_groups(tmp_path):
@@ -80,3 +91,4 @@ def test_resolution_absent(tmp_path, content):
     assert resolution_a(p) is None
     assert nomask_resolution_a(p) is None
     assert particle_count(p) is None
+    assert (fsc05_a(p), nomask_fsc05_a(p), point_group(p)) == (None, None, None)
