@@ -12,8 +12,9 @@ export type MoleculeSummary = {
   nomask_resolution_a: number | null;
   particle_count: number | null;
   thumbnail_url: string | null;
-  n_models: number;
-  n_maps: number;
+  // From the molecule's row in the data collection sheet, when it has exactly one.
+  movies: number | null;
+  microscope: string | null;
   scanned_at: string;
 };
 
@@ -24,7 +25,7 @@ export type MoleculePage = {
   total: number;
   molecules: MoleculeSummary[];
   // Matches per value among this search's results.
-  facets: { kinds?: Partial<Record<Kind, number>> };
+  facets: { kinds?: Partial<Record<Kind, number>>; microscope?: Record<string, number> };
 };
 
 export type SortKey =
@@ -33,8 +34,8 @@ export type SortKey =
   | 'resolution_a'
   | 'nomask_resolution_a'
   | 'particle_count'
-  | 'n_models'
-  | 'n_maps'
+  | 'movies'
+  | 'microscope'
   | 'scanned_at';
 
 export type MoleculeSearch = {
@@ -44,21 +45,26 @@ export type MoleculeSearch = {
   max_resolution?: number;
   max_nomask_resolution?: number;
   min_particles?: number;
+  min_movies?: number;
+  // Any listed microscope.
+  microscope?: string[];
   sort?: SortKey;
   order?: 'asc' | 'desc';
   page?: number;
   per_page?: number;
 };
 
-const KINDS: readonly Kind[] = ['model', 'map', 'plot', 'micrograph', 'report', 'log'];
+// The kinds the list filters by. Models and maps aren't filters, so a link's kind=model or kind=map
+// is dropped rather than narrowing the list with no chip to show it.
+const KINDS: readonly Kind[] = ['plot', 'micrograph', 'report', 'log'];
 const SORT_KEYS: readonly SortKey[] = [
   'name',
   'pdb_id',
   'resolution_a',
   'nomask_resolution_a',
   'particle_count',
-  'n_models',
-  'n_maps',
+  'movies',
+  'microscope',
   'scanned_at'
 ];
 const positive = (v: unknown) => (Number(v) > 0 && Number.isFinite(Number(v)) ? Number(v) : undefined);
@@ -68,6 +74,11 @@ const positiveInt = (v: unknown) => (Number.isInteger(positive(v)) ? Number(v) :
 // the API only sees searches it accepts.
 export function parseMoleculeSearch(raw: Record<string, unknown>): MoleculeSearch {
   const kind = [raw.kind].flat().filter((k): k is Kind => KINDS.includes(k as Kind));
+  // The router parses `?microscope=null` as null and `?microscope=3` as a number.
+  const microscope = [raw.microscope]
+    .flat()
+    .filter((m): m is string | number => (typeof m === 'string' && m !== '') || typeof m === 'number')
+    .map(String);
   const perPage = positiveInt(raw.per_page);
   return {
     // The router parses `?q=10` as a number.
@@ -76,6 +87,8 @@ export function parseMoleculeSearch(raw: Record<string, unknown>): MoleculeSearc
     max_resolution: positive(raw.max_resolution),
     max_nomask_resolution: positive(raw.max_nomask_resolution),
     min_particles: positiveInt(raw.min_particles),
+    min_movies: positiveInt(raw.min_movies),
+    microscope: microscope.length ? microscope : undefined,
     sort: SORT_KEYS.includes(raw.sort as SortKey) ? (raw.sort as SortKey) : undefined,
     order: raw.order === 'asc' || raw.order === 'desc' ? raw.order : undefined,
     page: positiveInt(raw.page),
@@ -106,7 +119,13 @@ export type MoleculeFile = {
   url: string;
 };
 
-export type MoleculeDetail = Omit<MoleculeSummary, 'n_models' | 'n_maps'> & {
+export type MoleculeDetail = Omit<MoleculeSummary, 'movies' | 'microscope'> & {
+  // The data collection sheet's rows for this molecule: {column: value}. Meant to be one; more is a mistake in the sheet.
+  collections: Record<string, string>[];
+  // From the cryoSPARC log, like the resolutions.
+  fsc05_a: number | null;
+  nomask_fsc05_a: number | null;
+  point_group: string | null;
   files: MoleculeFile[];
 };
 

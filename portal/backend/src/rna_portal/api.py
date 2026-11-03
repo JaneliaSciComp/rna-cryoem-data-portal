@@ -19,7 +19,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from rna_portal import config, db, search
-from rna_portal.models import Kind, Molecule, MoleculeFile
+from rna_portal.models import Kind, Molecule, MoleculeFile, SheetCollection
 
 app = FastAPI(title="RNA AI CryoEM data portal")
 
@@ -55,8 +55,9 @@ class MoleculeSummary(BaseModel):
     nomask_resolution_a: float | None
     particle_count: int | None
     thumbnail_url: str | None
-    n_models: int
-    n_maps: int
+    # From the molecule's row in the data collection sheet, when it has exactly one.
+    movies: int | None
+    microscope: str | None
     scanned_at: datetime
 
 
@@ -78,8 +79,14 @@ class MoleculeDetail(BaseModel):
     resolution_a: float | None
     nomask_resolution_a: float | None
     particle_count: int | None
+    fsc05_a: float | None
+    nomask_fsc05_a: float | None
+    point_group: str | None
     thumbnail_url: str | None
     scanned_at: datetime
+    # The data collection sheet's rows for this molecule's folder, in sheet order (sheet.py).
+    # Meant to be one; more is a mistake in the sheet, which the page reports.
+    collections: list[dict[str, str]]
     files: list[FileOut]
 
 
@@ -108,6 +115,8 @@ def list_molecules(
     max_resolution: Annotated[float | None, Query(gt=0, allow_inf_nan=False)] = None,
     max_nomask_resolution: Annotated[float | None, Query(gt=0, allow_inf_nan=False)] = None,
     min_particles: Annotated[int | None, Query(ge=1)] = None,
+    min_movies: Annotated[int | None, Query(ge=1)] = None,
+    microscope: Annotated[list[str], Query()] = [],
     sort: SortKey | None = None,
     order: Literal["asc", "desc"] = "asc",
     page: Annotated[int, Query(ge=1)] = 1,
@@ -116,12 +125,16 @@ def list_molecules(
 ):
     """Search the molecules: q matches name, id, or PDB ID; each filter narrows the results.
     Without a sort, the best text matches come first, then names A to Z."""
+    if any(len(m) > 200 for m in microscope):
+        raise HTTPException(status_code=422, detail="bad microscope")
     try:
         r = search.search(
             q=q, kinds=kind, max_resolution=max_resolution,
             max_nomask_resolution=max_nomask_resolution, min_particles=min_particles,
-            sort=sort, order=order, page=page, per_page=per_page,
+            min_movies=min_movies, microscopes=microscope, sort=sort, order=order, page=page, per_page=per_page,
         )
+    except ValueError as exc:  # a backquote in a microscope
+        raise HTTPException(status_code=422, detail=str(exc))
     except search.SearchUnavailable as exc:
         raise HTTPException(status_code=503, detail=f"search unavailable: {exc}")
     return MoleculePage(
@@ -132,7 +145,7 @@ def list_molecules(
                 id=d["molecule_id"], name=d["name"], pdb_id=d.get("pdb_id"),
                 resolution_a=d.get("resolution_a"), nomask_resolution_a=d.get("nomask_resolution_a"),
                 particle_count=d.get("particle_count"), thumbnail_url=_thumbnail_url(d.get("thumbnail_path")),
-                n_models=d["n_models"], n_maps=d["n_maps"], scanned_at=d["scanned_at"],
+                movies=d.get("movies"), microscope=d.get("microscope"), scanned_at=d["scanned_at"],
             )
             for d in (hit["document"] for hit in r["hits"])
         ],
@@ -148,7 +161,11 @@ def get_molecule(molecule_id: str, session: Session = Depends(get_session)):
     return MoleculeDetail(
         id=m.id, name=m.name, pdb_id=m.pdb_id, resolution_a=m.resolution_a,
         nomask_resolution_a=m.nomask_resolution_a, particle_count=m.particle_count,
+        fsc05_a=m.fsc05_a, nomask_fsc05_a=m.nomask_fsc05_a, point_group=m.point_group,
         thumbnail_url=_thumbnail_url(m.thumbnail_path), scanned_at=m.scanned_at,
+        collections=session.scalars(
+            select(SheetCollection.fields).where(SheetCollection.name == m.id).order_by(SheetCollection.id)
+        ).all(),
         files=[_file_out(f) for f in m.files],
     )
 

@@ -4,11 +4,11 @@ import { mockFetch, renderApp } from '../test/renderApp';
 
 const MOL9 = {
   id: 'Mol9_gRNAde', name: 'gRNAde', pdb_id: '10ZT', resolution_a: 2.9663, nomask_resolution_a: 3.5678, particle_count: 479673,
-  thumbnail_url: '/api/thumbnails/Mol9_gRNAde.png', n_models: 6, n_maps: 3, scanned_at: '2026-10-01T12:00:00Z'
+  thumbnail_url: '/api/thumbnails/Mol9_gRNAde.png', movies: 12345, microscope: 'Janelia Krios4', scanned_at: '2026-10-01T12:00:00Z'
 };
 const MOL23 = {
   id: 'Mol23_TrpHolo', name: 'TrpHolo', pdb_id: null, resolution_a: null, nomask_resolution_a: null, particle_count: null,
-  thumbnail_url: null, n_models: 0, n_maps: 0, scanned_at: '2026-10-01T12:00:00Z'
+  thumbnail_url: null, movies: null, microscope: null, scanned_at: '2026-10-01T12:00:00Z'
 };
 const page = (molecules: object[], found = molecules.length, facets = {}, total = 30) => ({ found, total, molecules, facets });
 // The URLs the page fetched molecules from, as their query strings.
@@ -26,6 +26,8 @@ test('lists the molecules', async () => {
   expect(screen.getByText('2.97 Å')).toBeInTheDocument();
   expect(screen.getByText('3.57 Å')).toBeInTheDocument();
   expect(screen.getByText('479,673')).toBeInTheDocument();
+  expect(screen.getByText('12,345')).toBeInTheDocument();
+  expect(screen.getByText('Janelia Krios4')).toBeInTheDocument();
   expect(screen.getByRole('img', { name: 'gRNAde' })).toHaveAttribute('src', '/api/thumbnails/Mol9_gRNAde.png');
   expect(screen.getByLabelText('No thumbnail for TrpHolo')).toBeInTheDocument();
 });
@@ -90,23 +92,23 @@ test('pages through the molecules', async () => {
 
 test('searches and filters, showing facet counts', async () => {
   const fetchMock = mockFetch({
-    '/api/molecules': page([MOL23, MOL9], 2, { kinds: { model: 1, map: 1 } }),
+    '/api/molecules': page([MOL23, MOL9], 2, { kinds: { plot: 1, micrograph: 1 } }),
     '/api/molecules?q=holo&page=1&per_page=10': page([]),
-    '/api/molecules?q=holo&kind=map&page=1&per_page=10': page([])
+    '/api/molecules?q=holo&kind=plot&page=1&per_page=10': page([])
   });
   const router = renderApp('/');
   await screen.findByRole('link', { name: 'gRNAde' });
-  expect(screen.getByRole('checkbox', { name: 'Maps (1)' })).not.toBeChecked();
+  expect(screen.getByRole('checkbox', { name: 'Plots (1)' })).not.toBeChecked();
 
   await userEvent.type(screen.getByRole('searchbox', { name: 'Search' }), 'holo');
   expect(await screen.findByText('No molecules match these filters.')).toBeInTheDocument();
   // Debounced: one search for the whole word.
   expect(searches(fetchMock)).toEqual(['page=1&per_page=10', 'q=holo&page=1&per_page=10']);
 
-  await userEvent.click(screen.getByRole('checkbox', { name: 'Maps (0)' }));
-  await waitFor(() => expect(searches(fetchMock)).toContain('q=holo&kind=map&page=1&per_page=10'));
-  expect(screen.getByRole('checkbox', { name: 'Maps (0)' })).toBeChecked();
-  expect(router.state.location.search).toEqual({ q: 'holo', kind: ['map'] });
+  await userEvent.click(screen.getByRole('checkbox', { name: 'Plots (0)' }));
+  await waitFor(() => expect(searches(fetchMock)).toContain('q=holo&kind=plot&page=1&per_page=10'));
+  expect(screen.getByRole('checkbox', { name: 'Plots (0)' })).toBeChecked();
+  expect(router.state.location.search).toEqual({ q: 'holo', kind: ['plot'] });
 });
 
 test('filters by resolution', async () => {
@@ -130,27 +132,44 @@ test('filters by no mask resolution and particles', async () => {
   expect(router.state.location.search).toEqual({ max_nomask_resolution: 4, min_particles: 300000 });
 });
 
+test('filters by movies and microscope', async () => {
+  const fetchMock = mockFetch({ '/api/molecules': page([MOL9], 1, { microscope: { Krios3: 2, 'Janelia Krios4': 1 } }) });
+  const router = renderApp('/');
+  await screen.findByRole('link', { name: 'gRNAde' });
+
+  await userEvent.type(screen.getByRole('spinbutton', { name: 'Min movies' }), '10000');
+  await waitFor(() => expect(searches(fetchMock)).toContain('min_movies=10000&page=1&per_page=10'));
+  await userEvent.click(screen.getByRole('checkbox', { name: 'Krios3 (2)' }));
+  await userEvent.click(screen.getByRole('checkbox', { name: 'Janelia Krios4 (1)' }));
+  await waitFor(() =>
+    expect(searches(fetchMock)).toContain('min_movies=10000&microscope=Krios3&microscope=Janelia+Krios4&page=1&per_page=10')
+  );
+  expect(router.state.location.search).toEqual({ min_movies: 10000, microscope: ['Krios3', 'Janelia Krios4'] });
+  expect(screen.getByText('Movies ≥ 10,000')).toBeInTheDocument();
+  expect(screen.getByText('Microscope: Krios3')).toBeInTheDocument();
+});
+
 test('shows the results a shared link describes', async () => {
   const fetchMock = mockFetch({ '/api/molecules': page([MOL9], 12) });
-  renderApp('/?q=grna&kind=map&max_resolution=3&sort=resolution_a&order=desc&page=2');
+  renderApp('/?q=grna&kind=plot&max_resolution=3&sort=resolution_a&order=desc&page=2');
 
   await screen.findByRole('link', { name: 'gRNAde' });
-  expect(searches(fetchMock)).toEqual(['q=grna&kind=map&max_resolution=3&sort=resolution_a&order=desc&page=2&per_page=10']);
+  expect(searches(fetchMock)).toEqual(['q=grna&kind=plot&max_resolution=3&sort=resolution_a&order=desc&page=2&per_page=10']);
   expect(screen.getByRole('searchbox', { name: 'Search' })).toHaveValue('grna');
-  expect(screen.getByRole('checkbox', { name: /Maps/ })).toBeChecked();
+  expect(screen.getByRole('checkbox', { name: /Plots/ })).toBeChecked();
   expect(screen.getByRole('spinbutton', { name: 'Max masked resolution' })).toHaveValue(3);
   expect(screen.getByText('11-12 of 12')).toBeInTheDocument();
 });
 
 test('shows the match count and a chip per filter', async () => {
   const fetchMock = mockFetch({ '/api/molecules': page([MOL9], 1) });
-  const router = renderApp('/?kind=map&max_resolution=3&min_particles=300000');
+  const router = renderApp('/?kind=plot&max_resolution=3&min_particles=300000');
 
   expect(await screen.findByText('1 out of 30 total molecules match the selected filters')).toBeInTheDocument();
-  expect(screen.getByText('Has maps')).toBeInTheDocument();
+  expect(screen.getByText('Has plots')).toBeInTheDocument();
   expect(screen.getByText('Particles ≥ 300,000')).toBeInTheDocument();
   await userEvent.click(within(screen.getByText('Masked resolution ≤ 3 Å').closest('.MuiChip-root') as HTMLElement).getByTestId('CancelIcon'));
-  await waitFor(() => expect(router.state.location.search).toEqual({ kind: ['map'], min_particles: 300000 }));
+  await waitFor(() => expect(router.state.location.search).toEqual({ kind: ['plot'], min_particles: 300000 }));
   expect(screen.getByRole('spinbutton', { name: 'Max masked resolution' })).toHaveValue(null);
 
   await userEvent.click(screen.getByRole('button', { name: 'Clear all' }));

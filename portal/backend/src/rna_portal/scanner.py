@@ -17,7 +17,7 @@ from pathlib import Path
 from sqlalchemy import Engine, delete, select
 from sqlalchemy.orm import Session
 
-from rna_portal import config, db, parsers, search
+from rna_portal import config, db, parsers, search, sheet
 from rna_portal.classify import classify
 from rna_portal.models import Kind, Molecule, MoleculeFile, Source
 from rna_portal.render import render_thumbnail
@@ -122,6 +122,9 @@ def _sync_molecule(session: Session, root: Path, thumbnails: Path, folder: str, 
         molecule.resolution_a = parsers.resolution_a(job) if job else None
         molecule.nomask_resolution_a = parsers.nomask_resolution_a(job) if job else None
         molecule.particle_count = parsers.particle_count(job) if job else None
+        molecule.fsc05_a = parsers.fsc05_a(job) if job else None
+        molecule.nomask_fsc05_a = parsers.nomask_fsc05_a(job) if job else None
+        molecule.point_group = parsers.point_group(job) if job else None
         molecule.parsed_version = parsers.PARSER_VERSION
         molecule.scanned_at = datetime.now(timezone.utc)
 
@@ -220,11 +223,31 @@ def main() -> int:
         "scan complete: added=%d updated=%d unchanged=%d deleted=%d failed=%d",
         len(r.added), len(r.updated), len(r.unchanged), len(r.deleted), len(r.failed),
     )
+    sheet_read = _sync_sheet()
     indexed = _reindex()
     log.info("warmed %d files", len(warm(db.engine(), config.data_root())))
     if r.failed:
         log.error("failed molecules: %s", ", ".join(r.failed))
-    return 1 if r.failed or not indexed else 0
+    return 1 if r.failed or not indexed or not sheet_read else 0
+
+
+def _sync_sheet() -> bool:
+    """Read the data collection sheet into the catalog. A failure keeps the previous rows and is
+    reported in the exit code, but doesn't stop the rest of the scan."""
+    if (sheet_id := config.sheet_id()) is None:
+        return True
+    try:
+        collections = sheet.collections(sheet.fetch_csv(sheet_id, config.sheet_gid(), config.sheet_key()))
+        unmatched = sheet.sync(db.engine(), collections)
+    except Exception:
+        log.exception("data collection sheet read failed; keeping the previous rows")
+        return False
+    log.info("read %d grids from the data collection sheet", len(collections))
+    if duplicates := sorted(n for n, rows in collections.items() if len(rows) > 1):
+        log.error("more than one data collection sheet row for: %s", ", ".join(duplicates))
+    if unmatched:
+        log.info("molecules not in the data collection sheet: %s", ", ".join(unmatched))
+    return True
 
 
 def _reindex() -> bool:

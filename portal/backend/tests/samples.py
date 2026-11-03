@@ -7,17 +7,22 @@ def header_line(date: str, pdb: str) -> str:
     return f"{'HEADER':<10}{'RNA':<40}{date:<12}{pdb:<4}\n"
 
 
-def cryosparc_log(resolution: float, version: str = "v4.5.3", particles: int = 479673) -> str:
+def cryosparc_log(
+    resolution: float, version: str = "v4.5.3", particles: int = 479673, symmetry: str | None = None
+) -> str:
     """A cryoSPARC job's exported JSON (cryosparc_P93_J300_json.log), cut to the part we read.
     The masked resolution's key depends on the version; v4 also has a different radwn_final_A."""
     if version.startswith("v4"):
-        fsc = {"radwn_tightmask_A": resolution, "radwn_final_A": resolution + 0.05}
+        fsc = {"radwn_tightmask_A": resolution, "radwn_final_A": resolution + 0.05, "radwn_tightmask_05_A": 3.88}
     else:
-        fsc = {"radwn_final_A": resolution}
+        fsc = {"radwn_final_A": resolution, "radwn_autotight_noisesub_05_A": 3.1}
     return json.dumps(
         {
             "version": version,
             "job_type": "new_local_refine",
+            # The user's settings, then cryoSPARC's defaults.
+            "params_spec": {"refine_symmetry": {"value": symmetry}} if symmetry else {},
+            "params_base": {"refine_symmetry": {"value": "C1"}},
             "output_result_groups": [
                 {"uid": "J300-G2", "name": "particles_rejected", "type": "particle", "passthrough": "particles",
                  "num_items": 0},
@@ -27,7 +32,7 @@ def cryosparc_log(resolution: float, version: str = "v4.5.3", particles: int = 4
                     "uid": "J300-G1",
                     "type": "volume",
                     "num_items": 1,
-                    "latest_summary_stats": {"fsc_info_best": {**fsc, "radwn_nomask_A": 3.5}},
+                    "latest_summary_stats": {"fsc_info_best": {**fsc, "radwn_nomask_A": 3.5, "radwn_nomask_05_A": 4.84}},
                 },
             ],
         }

@@ -2,7 +2,7 @@
 # gated by modules/edge_auth. One workspace per environment (dev, prod). See README.md.
 
 terraform {
-  required_version = ">= 1.7.0"
+  required_version = ">= 1.9.0" # cross-variable validation in variables.tf
   required_providers {
     aws    = { source = "hashicorp/aws", version = ">= 6.0" }
     random = { source = "hashicorp/random", version = ">= 3.6" }

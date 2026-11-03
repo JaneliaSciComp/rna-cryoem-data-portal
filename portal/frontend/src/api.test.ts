@@ -18,11 +18,11 @@ test('builds the search URL, repeating list params and dropping blanks', () => {
 });
 
 test('keeps only the valid parts of a search from the URL', () => {
-  expect(parseMoleculeSearch({ q: 10, kind: 'map', max_resolution: 3.5, sort: 'name', order: 'desc', page: 2, per_page: 50 })).toEqual({
-    q: '10', kind: ['map'], max_resolution: 3.5, sort: 'name', order: 'desc', page: 2, per_page: 50
+  expect(parseMoleculeSearch({ q: 10, kind: 'plot', max_resolution: 3.5, sort: 'name', order: 'desc', page: 2, per_page: 50 })).toEqual({
+    q: '10', kind: ['plot'], max_resolution: 3.5, sort: 'name', order: 'desc', page: 2, per_page: 50
   });
-  expect(parseMoleculeSearch({ q: '', kind: ['map', 'nope'], max_resolution: 0, sort: 'path', order: 'up', page: 1.5, per_page: 251 })).toEqual({
-    kind: ['map']
+  expect(parseMoleculeSearch({ q: '', kind: ['plot', 'map', 'nope'], max_resolution: 0, sort: 'path', order: 'up', page: 1.5, per_page: 251 })).toEqual({
+    kind: ['plot']
   });
   expect(parseMoleculeSearch({ max_nomask_resolution: 4, min_particles: 300000, sort: 'particle_count' })).toMatchObject({
     max_nomask_resolution: 4, min_particles: 300000, sort: 'particle_count'
@@ -30,6 +30,9 @@ test('keeps only the valid parts of a search from the URL', () => {
   expect(parseMoleculeSearch({ max_nomask_resolution: -1, min_particles: 1.5 })).toMatchObject({
     max_nomask_resolution: undefined, min_particles: undefined
   });
+  expect(parseMoleculeSearch({ min_movies: 5000, microscope: 'Krios3' })).toMatchObject({ min_movies: 5000, microscope: ['Krios3'] });
+  // The router JSON-parses URL values: null, booleans, and objects are not microscopes.
+  expect(parseMoleculeSearch({ microscope: ['Krios3', 3, '', null, true, {}] })).toMatchObject({ microscope: ['Krios3', '3'] });
 });
 
 test('throws NotFound on 404', async () => {

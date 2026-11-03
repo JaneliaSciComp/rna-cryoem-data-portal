@@ -10,8 +10,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from rna_portal import parsers
-from rna_portal.models import Molecule, MoleculeFile
+from rna_portal.models import Molecule, MoleculeFile, SheetCollection
 from rna_portal.scanner import RootUnavailable, refresh_listings, scan, warm
+from rna_portal.sheet import sync as sync_sheet
 from samples import cryosparc_log, header_line
 
 TREE = {
@@ -77,6 +78,7 @@ def test_first_scan_catalogs_molecules(engine, root, thumbs):
     assert (m.name, m.pdb_id, m.resolution_a) == ("gRNAde", "10ZT", pytest.approx(2.97))
     assert m.nomask_resolution_a == 3.5
     assert m.particle_count == 479673
+    assert (m.nomask_fsc05_a, m.fsc05_a, m.point_group) == (4.84, 3.88, "C1")
     assert m.thumbnail_path == "Mol9_gRNAde.png" and (thumbs / "Mol9_gRNAde.png").is_file()
     assert {(f.path.split("/")[-1], f.kind, f.source) for f in m.files} == {
         ("10ZT.pdb", "model", "deposited"),
@@ -266,3 +268,12 @@ def test_refresh_listings_failure_is_root_unavailable(fake_rclone, reply):
 def test_refresh_listings_without_rclone_is_root_unavailable(tmp_path):
     with pytest.raises(RootUnavailable):
         refresh_listings(tmp_path / "missing.sock")
+
+
+def test_sync_sheet_replaces_the_rows_and_reports_unmatched_folders(engine, root, thumbs):
+    scan(engine, root, thumbs, FakeRender())
+    assert sync_sheet(engine, {"Mol9_gRNAde": [{"kV": "300"}], "Grid1 b1g1": [{"kV": "300"}]}) == ["Mol23_TrpHolo"]
+    assert sync_sheet(engine, {"Mol9_gRNAde": [{"kV": "300"}, {"kV": "200"}]}) == ["Mol23_TrpHolo"]
+    with Session(engine) as s:
+        rows = [(r.name, r.fields) for r in s.scalars(select(SheetCollection).order_by(SheetCollection.id))]
+    assert rows == [("Mol9_gRNAde", {"kV": "300"}), ("Mol9_gRNAde", {"kV": "200"})]

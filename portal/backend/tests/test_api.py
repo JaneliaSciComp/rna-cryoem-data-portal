@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from rna_portal import search
 from rna_portal.api import app, get_session
-from rna_portal.models import Molecule, MoleculeFile
+from rna_portal.models import Molecule, MoleculeFile, SheetCollection
 
 NOW = datetime(2026, 10, 1, tzinfo=timezone.utc)
 
@@ -29,7 +29,7 @@ def client(engine, typesense, tmp_path, monkeypatch):
         s.add_all([
             Molecule(
                 id="Mol9_gRNAde", name="gRNAde", pdb_id="10ZT", resolution_a=2.97, nomask_resolution_a=3.5,
-                particle_count=479673,
+                particle_count=479673, fsc05_a=3.88, nomask_fsc05_a=4.84, point_group="C1",
                 thumbnail_path="Mol9_gRNAde.png", scanned_at=NOW,
                 files=[
                     f("Mol9_gRNAde/PDB_deposit/10ZT.pdb", "model", "deposited"),
@@ -38,6 +38,12 @@ def client(engine, typesense, tmp_path, monkeypatch):
                 ],
             ),
             Molecule(id="Mol 9", name="Mol 9", scanned_at=NOW),
+            SheetCollection(name="Mol9_gRNAde", fields={"Microscope": "Janelia Krios4", "Movies": "12,345"}),
+            SheetCollection(name="Mol9", fields={"Microscope": "Krios4"}),  # not its folder
+            SheetCollection(name="Mol2_alpha", fields={"Microscope": "Krios3", "Movies": "5000"}),
+            # Two rows: a mistake in the sheet, so the list shows neither.
+            SheetCollection(name="Mol 9", fields={"Microscope": "Krios1", "Movies": "1"}),
+            SheetCollection(name="Mol 9", fields={"Microscope": "Krios2"}),
             Molecule(
                 id="Mol2_alpha", name="alpha", resolution_a=3.5, nomask_resolution_a=4.1, particle_count=200000,
                 scanned_at=NOW,
@@ -79,7 +85,8 @@ def test_list_molecules(client):
     mol9 = body["molecules"][1]
     assert (mol9["name"], mol9["pdb_id"], mol9["resolution_a"]) == ("gRNAde", "10ZT", 2.97)
     assert (mol9["nomask_resolution_a"], mol9["particle_count"]) == (3.5, 479673)
-    assert (mol9["n_models"], mol9["n_maps"]) == (2, 1)
+    assert (mol9["movies"], mol9["microscope"]) == (12345, "Janelia Krios4")
+    assert (body["molecules"][2]["movies"], body["molecules"][2]["microscope"]) == (None, None)
     assert mol9["thumbnail_url"] == "/api/thumbnails/Mol9_gRNAde.png"
     assert mol9["scanned_at"] == "2026-10-01T00:00:00Z"
     assert body["molecules"][2]["thumbnail_url"] is None
@@ -105,6 +112,10 @@ def test_search_text(client, q, expected):
     ({"max_nomask_resolution": 3.8}, ["Mol9_gRNAde"]),
     ({"min_particles": 300000}, ["Mol9_gRNAde"]),
     ({"min_particles": 200000}, ["Mol2_alpha", "Mol9_gRNAde"]),  # at least: inclusive
+    ({"min_movies": 5000}, ["Mol2_alpha", "Mol9_gRNAde"]),  # sheet counts such as "12,345"
+    ({"min_movies": 6000}, ["Mol9_gRNAde"]),
+    ({"microscope": "Krios3"}, ["Mol2_alpha"]),
+    ({"microscope": ["Krios3", "Janelia Krios4"]}, ["Mol2_alpha", "Mol9_gRNAde"]),  # any listed
 ])
 def test_filters(client, params, expected):
     assert ids(client, **params) == expected
@@ -115,13 +126,20 @@ def test_facets_count_within_the_results(client):
     assert facets["kinds"] == {"model": 1, "micrograph": 1}
 
 
+def test_microscope_counts_ignore_the_picked_microscopes(client):
+    facets = client.get("/molecules", params={"microscope": "Krios3", "kind": "model"}).json()["facets"]
+    assert facets["microscope"] == {"Krios3": 1, "Janelia Krios4": 1}
+    assert facets["kinds"] == {"model": 1, "micrograph": 1}  # still within the results
+
+
 @pytest.mark.parametrize("sort, order, expected", [
     ("resolution_a", "asc", ["Mol9_gRNAde", "Mol2_alpha", "Mol 9"]),
     ("resolution_a", "desc", ["Mol2_alpha", "Mol9_gRNAde", "Mol 9"]),  # blanks stay last
     ("nomask_resolution_a", "asc", ["Mol9_gRNAde", "Mol2_alpha", "Mol 9"]),
     ("particle_count", "desc", ["Mol9_gRNAde", "Mol2_alpha", "Mol 9"]),
     ("pdb_id", "asc", ["Mol9_gRNAde", "Mol2_alpha", "Mol 9"]),
-    ("n_models", "desc", ["Mol9_gRNAde", "Mol2_alpha", "Mol 9"]),
+    ("movies", "desc", ["Mol9_gRNAde", "Mol2_alpha", "Mol 9"]),
+    ("microscope", "asc", ["Mol9_gRNAde", "Mol2_alpha", "Mol 9"]),
     ("name", "desc", ["Mol 9", "Mol9_gRNAde", "Mol2_alpha"]),
 ])
 def test_sort(client, sort, order, expected):
@@ -142,7 +160,7 @@ def test_total_ignores_the_search(client):
 @pytest.mark.parametrize("params", [
     {"kind": "nope"}, {"sort": "path"}, {"max_resolution": "inf"}, {"max_resolution": 0},
     {"max_nomask_resolution": 0}, {"min_particles": 0}, {"min_particles": 1.5},
-    {"per_page": 251}, {"page": 0}, {"q": "x" * 201},
+    {"per_page": 251}, {"page": 0}, {"q": "x" * 201}, {"min_movies": 0}, {"microscope": "a`b"},
 ])
 def test_bad_params_are_422(client, params):
     assert client.get("/molecules", params=params).status_code == 422
@@ -158,6 +176,8 @@ def test_molecule_detail(client):
     body = client.get("/molecules/Mol9_gRNAde").json()
     assert body["nomask_resolution_a"] == 3.5
     assert body["particle_count"] == 479673
+    assert (body["nomask_fsc05_a"], body["fsc05_a"], body["point_group"]) == (4.84, 3.88, "C1")
+    assert body["collections"] == [{"Microscope": "Janelia Krios4", "Movies": "12,345"}]
     by_name = {x["name"]: x for x in body["files"]}
     pdb = by_name["10ZT.pdb"]
     assert (pdb["kind"], pdb["source"], pdb["path"]) == ("model", "deposited", "Mol9_gRNAde/PDB_deposit/10ZT.pdb")
@@ -167,7 +187,7 @@ def test_molecule_detail(client):
 
 def test_molecule_id_with_space(client):
     r = client.get("/molecules/Mol%209")
-    assert r.status_code == 200 and r.json()["files"] == []
+    assert r.status_code == 200 and r.json()["files"] == [] and len(r.json()["collections"]) == 2
 
 
 def test_unknown_molecule_is_404(client):
