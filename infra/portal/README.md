@@ -350,7 +350,7 @@ update it there if `terraform output -raw portal_url` changes.
 | `push-images.sh`: `commit or stash changes first` | `git status` shows changes or untracked files. Commit, stash, or delete them; the tag must name the commit the images come from. |
 | Scanner: `Can't locate revision` | The scanner's code is older than the database. Expected for a scheduled scan between steps 5 and 6. After a rollback, see [Roll back](#roll-back), step 1. |
 | Scanner: `search reindex failed` with `Connection refused` | Typesense wasn't running yet. Rerun step 7. |
-| Molecule list answers 503 | The search index is empty. Run the scanner (step 7). |
+| Molecule list answers 503 | The search index is empty, or the release added a search field the live index lacks. Run the scanner (step 7). |
 
 ## Known ceilings
 

@@ -112,6 +112,8 @@ def list_molecules(
     max_resolution: Annotated[float | None, Query(gt=0, allow_inf_nan=False)] = None,
     max_nomask_resolution: Annotated[float | None, Query(gt=0, allow_inf_nan=False)] = None,
     min_particles: Annotated[int | None, Query(ge=1)] = None,
+    min_movies: Annotated[int | None, Query(ge=1)] = None,
+    microscope: Annotated[list[str], Query()] = [],
     sort: SortKey | None = None,
     order: Literal["asc", "desc"] = "asc",
     page: Annotated[int, Query(ge=1)] = 1,
@@ -120,12 +122,16 @@ def list_molecules(
 ):
     """Search the molecules: q matches name, id, or PDB ID; each filter narrows the results.
     Without a sort, the best text matches come first, then names A to Z."""
+    if any(len(m) > 200 for m in microscope):
+        raise HTTPException(status_code=422, detail="bad microscope")
     try:
         r = search.search(
             q=q, kinds=kind, max_resolution=max_resolution,
             max_nomask_resolution=max_nomask_resolution, min_particles=min_particles,
-            sort=sort, order=order, page=page, per_page=per_page,
+            min_movies=min_movies, microscopes=microscope, sort=sort, order=order, page=page, per_page=per_page,
         )
+    except ValueError as exc:  # a backquote in a microscope
+        raise HTTPException(status_code=422, detail=str(exc))
     except search.SearchUnavailable as exc:
         raise HTTPException(status_code=503, detail=f"search unavailable: {exc}")
     return MoleculePage(

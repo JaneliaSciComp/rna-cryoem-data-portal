@@ -25,7 +25,7 @@ export type MoleculePage = {
   total: number;
   molecules: MoleculeSummary[];
   // Matches per value among this search's results.
-  facets: { kinds?: Partial<Record<Kind, number>> };
+  facets: { kinds?: Partial<Record<Kind, number>>; microscope?: Record<string, number> };
 };
 
 export type SortKey =
@@ -45,6 +45,9 @@ export type MoleculeSearch = {
   max_resolution?: number;
   max_nomask_resolution?: number;
   min_particles?: number;
+  min_movies?: number;
+  // Any listed microscope.
+  microscope?: string[];
   sort?: SortKey;
   order?: 'asc' | 'desc';
   page?: number;
@@ -69,6 +72,11 @@ const positiveInt = (v: unknown) => (Number.isInteger(positive(v)) ? Number(v) :
 // the API only sees searches it accepts.
 export function parseMoleculeSearch(raw: Record<string, unknown>): MoleculeSearch {
   const kind = [raw.kind].flat().filter((k): k is Kind => KINDS.includes(k as Kind));
+  // The router parses `?microscope=null` as null and `?microscope=3` as a number.
+  const microscope = [raw.microscope]
+    .flat()
+    .filter((m): m is string | number => (typeof m === 'string' && m !== '') || typeof m === 'number')
+    .map(String);
   const perPage = positiveInt(raw.per_page);
   return {
     // The router parses `?q=10` as a number.
@@ -77,6 +85,8 @@ export function parseMoleculeSearch(raw: Record<string, unknown>): MoleculeSearc
     max_resolution: positive(raw.max_resolution),
     max_nomask_resolution: positive(raw.max_nomask_resolution),
     min_particles: positiveInt(raw.min_particles),
+    min_movies: positiveInt(raw.min_movies),
+    microscope: microscope.length ? microscope : undefined,
     sort: SORT_KEYS.includes(raw.sort as SortKey) ? (raw.sort as SortKey) : undefined,
     order: raw.order === 'asc' || raw.order === 'desc' ? raw.order : undefined,
     page: positiveInt(raw.page),

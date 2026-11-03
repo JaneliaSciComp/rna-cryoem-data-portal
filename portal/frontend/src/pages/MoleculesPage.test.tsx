@@ -132,6 +132,23 @@ test('filters by no mask resolution and particles', async () => {
   expect(router.state.location.search).toEqual({ max_nomask_resolution: 4, min_particles: 300000 });
 });
 
+test('filters by movies and microscope', async () => {
+  const fetchMock = mockFetch({ '/api/molecules': page([MOL9], 1, { microscope: { Krios3: 2, 'Janelia Krios4': 1 } }) });
+  const router = renderApp('/');
+  await screen.findByRole('link', { name: 'gRNAde' });
+
+  await userEvent.type(screen.getByRole('spinbutton', { name: 'Min movies' }), '10000');
+  await waitFor(() => expect(searches(fetchMock)).toContain('min_movies=10000&page=1&per_page=10'));
+  await userEvent.click(screen.getByRole('checkbox', { name: 'Krios3 (2)' }));
+  await userEvent.click(screen.getByRole('checkbox', { name: 'Janelia Krios4 (1)' }));
+  await waitFor(() =>
+    expect(searches(fetchMock)).toContain('min_movies=10000&microscope=Krios3&microscope=Janelia+Krios4&page=1&per_page=10')
+  );
+  expect(router.state.location.search).toEqual({ min_movies: 10000, microscope: ['Krios3', 'Janelia Krios4'] });
+  expect(screen.getByText('Movies ≥ 10,000')).toBeInTheDocument();
+  expect(screen.getByText('Microscope: Krios3')).toBeInTheDocument();
+});
+
 test('shows the results a shared link describes', async () => {
   const fetchMock = mockFetch({ '/api/molecules': page([MOL9], 12) });
   renderApp('/?q=grna&kind=map&max_resolution=3&sort=resolution_a&order=desc&page=2');

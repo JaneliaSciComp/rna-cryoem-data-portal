@@ -135,12 +135,14 @@ function MoleculesTable() {
   const [maxResolution, setMaxResolution] = useState(search.max_resolution?.toString() ?? '');
   const [maxNomask, setMaxNomask] = useState(search.max_nomask_resolution?.toString() ?? '');
   const [minParticles, setMinParticles] = useState(search.min_particles?.toString() ?? '');
+  const [minMovies, setMinMovies] = useState(search.min_movies?.toString() ?? '');
   const typed = {
     q: useDebounced(q.trim(), 300) || undefined,
     max_resolution: Number(useDebounced(maxResolution, 300)) || undefined,
     max_nomask_resolution: Number(useDebounced(maxNomask, 300)) || undefined,
     // The API takes whole particles.
-    min_particles: Math.trunc(Number(useDebounced(minParticles, 300))) || undefined
+    min_particles: Math.trunc(Number(useDebounced(minParticles, 300))) || undefined,
+    min_movies: Math.trunc(Number(useDebounced(minMovies, 300))) || undefined
   };
   // Only the boxes whose pause just ended: another box's value can be stale, still inside its
   // own debounce after a chip or Clear all emptied it, and would put its filter back.
@@ -151,9 +153,10 @@ function MoleculesTable() {
     if (keys.some(k => typed[k] !== search[k])) {
       filter(Object.fromEntries(keys.map(k => [k, typed[k]])));
     }
-  }, [typed.q, typed.max_resolution, typed.max_nomask_resolution, typed.min_particles]);
+  }, [typed.q, typed.max_resolution, typed.max_nomask_resolution, typed.min_particles, typed.min_movies]);
 
   const kinds = search.kind ?? [];
+  const microscopes = search.microscope ?? [];
   // One chip per filter. Clearing a number filter empties its box too, which reaches the URL
   // after the debounce; the filter call drops it from the URL now.
   const chips = [
@@ -161,6 +164,7 @@ function MoleculesTable() {
       label: `Has ${label.toLowerCase()}`,
       clear: () => filter({ kind: toggle(kinds, value) })
     })),
+    ...microscopes.map(value => ({ label: `Microscope: ${value}`, clear: () => filter({ microscope: toggle(microscopes, value) }) })),
     ...(search.max_resolution
       ? [{ label: `Masked resolution ≤ ${search.max_resolution} Å`, clear: () => {
             setMaxResolution('');
@@ -178,13 +182,27 @@ function MoleculesTable() {
             setMinParticles('');
             filter({ min_particles: undefined });
           } }]
+      : []),
+    ...(search.min_movies
+      ? [{ label: `Movies ≥ ${formatCount(search.min_movies)}`, clear: () => {
+            setMinMovies('');
+            filter({ min_movies: undefined });
+          } }]
       : [])
   ];
   const clearAll = () => {
     setMaxResolution('');
     setMaxNomask('');
     setMinParticles('');
-    filter({ kind: undefined, max_resolution: undefined, max_nomask_resolution: undefined, min_particles: undefined });
+    setMinMovies('');
+    filter({
+      kind: undefined,
+      max_resolution: undefined,
+      max_nomask_resolution: undefined,
+      min_particles: undefined,
+      min_movies: undefined,
+      microscope: undefined
+    });
   };
   const nFilters = chips.length;
   const filtered = Boolean(search.q || nFilters);
@@ -198,6 +216,8 @@ function MoleculesTable() {
       max_resolution: search.max_resolution,
       max_nomask_resolution: search.max_nomask_resolution,
       min_particles: search.min_particles,
+      min_movies: search.min_movies,
+      microscope: search.microscope,
       sort: search.sort,
       order: search.sort && (search.order ?? 'asc'),
       page: pagination.pageIndex + 1,
@@ -390,15 +410,23 @@ function MoleculesTable() {
     muiTablePaperProps: { elevation: 0, sx: { border: 1, borderColor: 'divider', borderRadius: 2 } }
   });
 
+  // The sheet's microscopes, A to Z, plus any the URL picks that no molecule has.
+  const microscopeOptions = [...new Set([...Object.keys(data?.facets.microscope ?? {}), ...microscopes])].sort();
+
   const filterPanel = (
     <Box sx={{ display: 'grid', gap: 1 }}>
-      <FilterSection title="Has files">
-        <FormGroup aria-label="Has files">
-          {KINDS.map(([value, label]) => (
+      <FilterSection title="Microscope">
+        <FormGroup aria-label="Microscope">
+          {microscopeOptions.length === 0 ? (
+            <Typography color="text.secondary" variant="body2">
+              None in the data collection sheet.
+            </Typography>
+          ) : null}
+          {microscopeOptions.map(value => (
             <FormControlLabel
-              control={<Checkbox checked={kinds.includes(value)} onChange={() => filter({ kind: toggle(kinds, value) })} size="small" />}
+              control={<Checkbox checked={microscopes.includes(value)} onChange={() => filter({ microscope: toggle(microscopes, value) })} size="small" />}
               key={value}
-              label={`${label} (${data?.facets.kinds?.[value] ?? 0})`}
+              label={`${value} (${data?.facets.microscope?.[value] ?? 0})`}
             />
           ))}
         </FormGroup>
@@ -411,6 +439,20 @@ function MoleculesTable() {
       </FilterSection>
       <FilterSection title="Particles">
         <NumberFilter label="Min particles" onChange={setMinParticles} placeholder="Min particles" step={1000} value={minParticles} />
+      </FilterSection>
+      <FilterSection title="Movies">
+        <NumberFilter label="Min movies" onChange={setMinMovies} placeholder="Min movies" step={1000} value={minMovies} />
+      </FilterSection>
+      <FilterSection title="Has files">
+        <FormGroup aria-label="Has files">
+          {KINDS.map(([value, label]) => (
+            <FormControlLabel
+              control={<Checkbox checked={kinds.includes(value)} onChange={() => filter({ kind: toggle(kinds, value) })} size="small" />}
+              key={value}
+              label={`${label} (${data?.facets.kinds?.[value] ?? 0})`}
+            />
+          ))}
+        </FormGroup>
       </FilterSection>
     </Box>
   );

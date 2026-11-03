@@ -112,6 +112,10 @@ def test_search_text(client, q, expected):
     ({"max_nomask_resolution": 3.8}, ["Mol9_gRNAde"]),
     ({"min_particles": 300000}, ["Mol9_gRNAde"]),
     ({"min_particles": 200000}, ["Mol2_alpha", "Mol9_gRNAde"]),  # at least: inclusive
+    ({"min_movies": 5000}, ["Mol2_alpha", "Mol9_gRNAde"]),  # sheet counts such as "12,345"
+    ({"min_movies": 6000}, ["Mol9_gRNAde"]),
+    ({"microscope": "Krios3"}, ["Mol2_alpha"]),
+    ({"microscope": ["Krios3", "Janelia Krios4"]}, ["Mol2_alpha", "Mol9_gRNAde"]),  # any listed
 ])
 def test_filters(client, params, expected):
     assert ids(client, **params) == expected
@@ -120,6 +124,12 @@ def test_filters(client, params, expected):
 def test_facets_count_within_the_results(client):
     facets = client.get("/molecules", params={"kind": "micrograph"}).json()["facets"]
     assert facets["kinds"] == {"model": 1, "micrograph": 1}
+
+
+def test_microscope_counts_ignore_the_picked_microscopes(client):
+    facets = client.get("/molecules", params={"microscope": "Krios3", "kind": "model"}).json()["facets"]
+    assert facets["microscope"] == {"Krios3": 1, "Janelia Krios4": 1}
+    assert facets["kinds"] == {"model": 1, "micrograph": 1}  # still within the results
 
 
 @pytest.mark.parametrize("sort, order, expected", [
@@ -150,7 +160,7 @@ def test_total_ignores_the_search(client):
 @pytest.mark.parametrize("params", [
     {"kind": "nope"}, {"sort": "path"}, {"max_resolution": "inf"}, {"max_resolution": 0},
     {"max_nomask_resolution": 0}, {"min_particles": 0}, {"min_particles": 1.5},
-    {"per_page": 251}, {"page": 0}, {"q": "x" * 201},
+    {"per_page": 251}, {"page": 0}, {"q": "x" * 201}, {"min_movies": 0}, {"microscope": "a`b"},
 ])
 def test_bad_params_are_422(client, params):
     assert client.get("/molecules", params=params).status_code == 422
