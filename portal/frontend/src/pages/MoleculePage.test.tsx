@@ -17,7 +17,7 @@ const MOL9 = {
   id: 'Mol9_gRNAde', name: 'gRNAde', pdb_id: '10ZT', resolution_a: 2.97, nomask_resolution_a: 3.5, particle_count: 479673,
   fsc05_a: 3.88, nomask_fsc05_a: 4.84, point_group: 'C1',
   thumbnail_url: null, scanned_at: '2026-10-01T12:00:00Z',
-  collections: [{ Date: '2025/01/02', Microscope: 'Janelia Krios4', Movies: '12345' }],
+  collections: [{ Date: '2025/01/02', Microscope: 'Janelia Krios4', Movies: '12345', 'Energy Slit': '6' }],
   files: [
     f(1, 'Mol9_gRNAde/AlphaFold/model_0.cif', 'model', 'predicted'),
     f(2, 'Mol9_gRNAde/PDB_deposit/10ZT.pdb', 'model', 'deposited'),
@@ -48,7 +48,7 @@ test('shows the molecule', async () => {
   expect(screen.getByRole('link', { name: 'validation.pdf' })).toHaveAttribute('href', '/api/files/6');
 
   // The data collection table, in a drawer at this (jsdom's) narrow width: sheet columns by
-  // their row's name, cryoSPARC values, and a dash where the sheet has no column yet.
+  // their row's name, cryoSPARC values, per-microscope values, and a dash where the sheet has no column yet.
   expect(screen.queryByRole('row', { name: /^Microscope/ })).not.toBeInTheDocument();
   await userEvent.click(screen.getByRole('button', { name: 'Data collection and processing' }));
   expect(screen.getByRole('row', { name: /Data collection date/ })).toHaveTextContent('2025/01/02');
@@ -58,7 +58,10 @@ test('shows the molecule', async () => {
   expect(screen.getByRole('row', { name: /FSC 0\.143/ })).toHaveTextContent('3.50 Å / 2.97 Å');
   expect(screen.getByRole('row', { name: /FSC 0\.5 / })).toHaveTextContent('4.84 Å / 3.88 Å');
   expect(screen.getByRole('row', { name: /Point-group/ })).toHaveTextContent('C1');
-  expect(screen.getByRole('row', { name: /^Camera/ })).toHaveTextContent('—');
+  expect(screen.getByRole('row', { name: /^Camera/ })).toHaveTextContent('Falcon 4i');
+  expect(screen.getByRole('row', { name: /Automation software/ })).toHaveTextContent('SerialEM');
+  expect(screen.getByRole('row', { name: /Energy filter slit/ })).toHaveTextContent('6');
+  expect(screen.getByRole('row', { name: /Micrographs used/ })).toHaveTextContent('—');
 });
 
 test('warns when the sheet has more than one row for the molecule', async () => {
