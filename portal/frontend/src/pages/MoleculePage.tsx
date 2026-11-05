@@ -33,6 +33,13 @@ function fscPair(nomask: number | null, masked: number | null): string | null {
   return nomask === null && masked === null ? null : `${formatResolution(nomask)} / ${formatResolution(masked)}`;
 }
 
+// Fixed per microscope, so not in the sheet. Keyed by the name's ending: the sheet has written
+// both "Krios4" and "Janelia Krios4".
+const MICROSCOPE_SETUP: Record<string, { camera: string; software: string }> = {
+  Krios3: { camera: 'Falcon 4i', software: 'SerialEM' },
+  Krios4: { camera: 'Falcon 4i', software: 'SerialEM' }
+};
+
 // The "Data collection and Processing" table in the standard cryo-EM layout, row for row, plus
 // four rows it leaves out: date and scientist first, Cs and AC after the voltage. Most values come
 // from the molecule's row in the data collection sheet; a row the sheet has no column for yet
@@ -40,6 +47,7 @@ function fscPair(nomask: number | null, masked: number | null): string | null {
 function Collection({ m }: { readonly m: MoleculeDetail }) {
   const rows = m.collections;
   const sheet = rows.length === 1 ? rows[0] : {};
+  const setup = Object.entries(MICROSCOPE_SETUP).find(([k]) => sheet.Microscope?.endsWith(k))?.[1];
   const col = (label: ReactNode, column?: string): MetadataRow => ({ label, value: column && sheet[column] });
   return (
     <Stack spacing={2}>
@@ -57,15 +65,15 @@ function Collection({ m }: { readonly m: MoleculeDetail }) {
           col('Voltage (keV)', 'kV'),
           col('Cs (mm)', 'Cs (mm)'),
           col('AC', 'AC'),
-          col('Camera'),
+          { label: 'Camera', value: setup?.camera },
           col('Magnification', 'Magnification'),
           col('Pixel size at detector (Å/pixel)', 'Pixel Size (Å)'),
           col('Total electron exposure (e⁻/Å²)', 'Total Dose'),
           col('Exposure rate (e⁻/pixel/sec)', 'Dose Rate'),
           col('Number of frames collected during exposure'),
           col('Defocus range (μm)', 'Defocus Range'),
-          col('Automation software'),
-          col('Energy filter slit width (if used)'),
+          { label: 'Automation software', value: setup?.software },
+          col('Energy filter slit width (eV, if used)', 'Energy Slit'),
           col('Micrographs collected (no.)', 'Movies'),
           col('Micrographs used (no.)'),
           col('Total extracted particles (no.)'),
