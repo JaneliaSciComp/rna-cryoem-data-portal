@@ -37,6 +37,7 @@ import {
   useMaterialReactTable
 } from 'material-react-table';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { trackEvent } from '../analytics';
 import { type Kind, type MoleculeSearch, type MoleculeSummary, moleculesQuery } from '../api';
 import { formatCount, formatResolution } from '../format';
 import { Thumbnail } from '../Thumbnail';
@@ -281,7 +282,10 @@ function MoleculesTable() {
         size: 110,
         Cell: ({ row: { original: m } }) =>
           m.pdb_id ? (
-            <MuiLink href={`https://www.rcsb.org/structure/${m.pdb_id}`} onClick={e => e.stopPropagation()} rel="noreferrer" target="_blank">
+            <MuiLink href={`https://www.rcsb.org/structure/${m.pdb_id}`} onClick={e => {
+                e.stopPropagation();
+                trackEvent('PDB link: molecules table');
+              }} rel="noreferrer" target="_blank">
               {m.pdb_id}
             </MuiLink>
           ) : (

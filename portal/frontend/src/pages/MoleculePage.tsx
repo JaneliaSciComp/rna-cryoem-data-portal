@@ -6,6 +6,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { type ReactNode, useEffect, useState } from 'react';
+import { trackEvent } from '../analytics';
 import { type MoleculeDetail, NotFound, moleculeQuery } from '../api';
 import { formatBytes, formatCount, formatResolution } from '../format';
 import { Gallery } from '../molecule/Gallery';
@@ -132,7 +133,12 @@ export function MoleculePage({ id }: { readonly id: string }) {
               {m.pdb_id ? (
                 <>
                   {' · PDB '}
-                  <MuiLink href={`https://www.rcsb.org/structure/${m.pdb_id}`} rel="noreferrer" target="_blank">
+                  <MuiLink
+                    href={`https://www.rcsb.org/structure/${m.pdb_id}`}
+                    onClick={() => trackEvent('PDB link: molecule page')}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
                     {m.pdb_id}
                   </MuiLink>
                 </>
@@ -140,7 +146,11 @@ export function MoleculePage({ id }: { readonly id: string }) {
             </Typography>
           </Box>
           {wide ? null : (
-            <Button onClick={() => setMetadataOpen(true)} size="small" startIcon={<InfoOutlinedIcon />} variant="contained">
+            <Button
+              onClick={() => {
+                trackEvent('Data collection and processing: open');
+                setMetadataOpen(true);
+              }} size="small" startIcon={<InfoOutlinedIcon />} variant="contained">
               Data collection and processing
             </Button>
           )}
@@ -207,11 +217,14 @@ export function MoleculePage({ id }: { readonly id: string }) {
                     <TableCell sx={{ whiteSpace: 'nowrap' }}>{formatBytes(f.size)}</TableCell>
                     <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
                       <Stack direction="row" justifyContent="flex-end" spacing={1}>
-                        <Button href={f.url} size="small">
+                        <Button href={f.url} onClick={() => trackEvent(`Download: ${SOURCE_LABEL[f.source]}`)} size="small">
                           Download
                         </Button>
                         {canOpenInNeuroglancer(f.path) ? (
-                          <Button href={neuroglancerUrl(window.location.origin, f.path)} size="small" target="_blank" variant="contained">
+                          <Button
+                            href={neuroglancerUrl(window.location.origin, f.path)}
+                            onClick={() => trackEvent('Open in Neuroglancer')}
+                            size="small" target="_blank" variant="contained">
                             Open in Neuroglancer
                           </Button>
                         ) : null}
@@ -240,7 +253,7 @@ export function MoleculePage({ id }: { readonly id: string }) {
           <List dense>
             {g.reports.map(f => (
               <ListItem key={f.id}>
-                <MuiLink href={f.url} rel="noreferrer" target="_blank">
+                <MuiLink href={f.url} onClick={() => trackEvent('Report: open')} rel="noreferrer" target="_blank">
                   {f.name}
                 </MuiLink>
               </ListItem>
