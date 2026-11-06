@@ -13,7 +13,8 @@ jobs:
         image: postgres:16-alpine
         env:
           POSTGRES_PASSWORD: test
-        ports: ["55432:5432"]
+        # Host ports below the Linux ephemeral range (32768-60999) so outbound sockets cannot take them.
+        ports: ["15432:5432"]
         options: >-
           --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
       # The test fixture waits for /health; the image has no curl for a health-cmd.
@@ -22,7 +23,10 @@ jobs:
         env:
           TYPESENSE_API_KEY: test
           TYPESENSE_DATA_DIR: /tmp
-        ports: ["58108:8108"]
+        ports: ["18108:8108"]
+    env:
+      TEST_DATABASE_URL: postgresql+psycopg://postgres:test@localhost:15432/postgres
+      TEST_TYPESENSE_URL: http://localhost:18108
     defaults:
       run:
         working-directory: portal
