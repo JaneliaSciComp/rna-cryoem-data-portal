@@ -1,6 +1,7 @@
-import { AppBar, Container, Toolbar, Typography } from '@mui/material';
+import { AppBar, Box, Button, Container, Toolbar, Typography } from '@mui/material';
 import { Link, Outlet, type RouterHistory, createRootRoute, createRoute, createRouter } from '@tanstack/react-router';
 import { parseMoleculeSearch } from './api';
+import { AboutPage } from './pages/AboutPage';
 import { MoleculePage } from './pages/MoleculePage';
 import { MoleculesPage } from './pages/MoleculesPage';
 
@@ -12,6 +13,10 @@ function Layout() {
           <Link style={{ color: 'inherit', textDecoration: 'none' }} to="/">
             <Typography variant="h6">RNA AI CryoEM Data Portal</Typography>
           </Link>
+          <Box sx={{ flexGrow: 1 }} />
+          <Button color="inherit" component={Link} to="/about">
+            About
+          </Button>
         </Toolbar>
       </AppBar>
       {/* Wider than MUI's 1200px lg default, so the molecule table has room beside its filters. */}
@@ -47,7 +52,9 @@ const moleculeRoute = createRoute({
   }
 });
 
-export const routeTree = rootRoute.addChildren([indexRoute, moleculeRoute]);
+const aboutRoute = createRoute({ getParentRoute: () => rootRoute, path: '/about', component: AboutPage });
+
+export const routeTree = rootRoute.addChildren([indexRoute, moleculeRoute, aboutRoute]);
 
 export function createAppRouter(history?: RouterHistory) {
   return createRouter({ routeTree, history });
