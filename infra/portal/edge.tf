@@ -86,6 +86,7 @@ resource "aws_cloudfront_distribution" "portal" {
   enabled     = true
   comment     = local.name
   price_class = "PriceClass_100"
+  aliases     = var.domain_name == "" ? [] : [var.domain_name]
 
   origin {
     origin_id   = "alb"
@@ -118,6 +119,9 @@ resource "aws_cloudfront_distribution" "portal" {
   }
 
   viewer_certificate {
-    cloudfront_default_certificate = true
+    cloudfront_default_certificate = var.acm_certificate_arn == ""
+    acm_certificate_arn            = var.acm_certificate_arn == "" ? null : var.acm_certificate_arn
+    ssl_support_method             = var.acm_certificate_arn == "" ? null : "sni-only"
+    minimum_protocol_version       = var.acm_certificate_arn == "" ? null : "TLSv1.2_2021"
   }
 }

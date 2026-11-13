@@ -64,3 +64,20 @@ variable "collection_sheet_gid" {
   type        = string
   default     = "0"
 }
+
+variable "domain_name" {
+  description = "Custom hostname for the CloudFront distribution, e.g. rna-cryoem.janelia.org. Empty: the *.cloudfront.net name only. Requires acm_certificate_arn."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.domain_name == "" || var.acm_certificate_arn != ""
+    error_message = "domain_name needs acm_certificate_arn: an ACM certificate in us-east-1 covering the hostname."
+  }
+}
+
+variable "acm_certificate_arn" {
+  description = "ACM certificate (us-east-1, issued outside Terraform) for domain_name."
+  type        = string
+  default     = ""
+}
