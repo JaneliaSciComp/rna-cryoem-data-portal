@@ -11,7 +11,8 @@ function Layout() {
     <>
       <AppBar position="static">
         <Toolbar>
-          <Link style={{ color: 'inherit', textDecoration: 'none' }} to="/">
+          <Link style={{ color: 'inherit', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 12 }} to="/">
+            <Box alt="" component="img" src="/logo-white.png" sx={{ height: 32 }} />
             <Typography variant="h6">RNA AI CryoEM Data Portal</Typography>
           </Link>
           <Box sx={{ flexGrow: 1 }} />
