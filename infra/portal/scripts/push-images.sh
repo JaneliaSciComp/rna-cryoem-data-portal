@@ -24,7 +24,7 @@ docker build --pull --platform linux/amd64 -f "$repo_root/portal/backend/Dockerf
 docker run --rm --platform linux/amd64 --entrypoint flock "$repo/api:$tag" --version
 docker push "$repo/api:$tag"
 
-docker build --pull --platform linux/amd64 --build-arg COGNITO_CLIENT_ID="$client_id" \
+docker build --pull --platform linux/amd64 --build-arg COGNITO_CLIENT_ID="$client_id" --build-arg APP_VERSION="$tag" \
   -f "$repo_root/infra/portal/nginx/Dockerfile" -t "$repo/nginx:$tag" "$repo_root"
 docker push "$repo/nginx:$tag"
 

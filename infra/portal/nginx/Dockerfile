@@ -7,6 +7,9 @@ WORKDIR /src
 COPY portal/frontend/package.json portal/frontend/package-lock.json ./
 RUN npm ci
 COPY portal/frontend/ ./
+# The image tag, shown in the footer. Vite inlines VITE_* at build time.
+ARG APP_VERSION
+ENV VITE_APP_VERSION=$APP_VERSION
 RUN npm run build
 
 # Neuroglancer's npm package is a library; the app is built from the tagged source.
