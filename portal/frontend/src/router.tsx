@@ -1,6 +1,7 @@
 import { AppBar, Box, Button, Container, Toolbar, Typography } from '@mui/material';
 import { Link, Outlet, type RouterHistory, createRootRoute, createRoute, createRouter } from '@tanstack/react-router';
 import { parseMoleculeSearch } from './api';
+import { Footer } from './Footer';
 import { AboutPage } from './pages/AboutPage';
 import { MoleculePage } from './pages/MoleculePage';
 import { MoleculesPage } from './pages/MoleculesPage';
@@ -31,6 +32,7 @@ function Layout() {
       >
         <Outlet />
       </Container>
+      <Footer />
     </>
   );
 }
