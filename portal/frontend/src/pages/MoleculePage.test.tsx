@@ -37,6 +37,8 @@ test('shows the molecule', async () => {
   expect(screen.queryByText(/Masked resolution/)).not.toBeInTheDocument();
   // The picker opens on the deposited model.
   expect(screen.getByRole('combobox', { name: 'Model' })).toHaveTextContent('Deposited: 10ZT.pdb');
+  // The 2D panel reads that model's file. The mock serves no such file, so it says it couldn't.
+  expect(await screen.findByText("Couldn't read this model's sequence.")).toBeInTheDocument();
 
   const mapRow = screen.getByRole('row', { name: /volume_map\.mrc/ });
   expect(within(mapRow).getByText('296.4 MB')).toBeInTheDocument();
