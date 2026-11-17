@@ -13,8 +13,9 @@ import { Gallery } from '../molecule/Gallery';
 import { MetadataDrawer } from '../molecule/MetadataDrawer';
 import { type MetadataRow, MetadataTable } from '../molecule/MetadataTable';
 import { SOURCE_LABEL, groupFiles } from '../molecule/groupFiles';
-import { formatFor } from '../molecule/loadMolstar';
+import { type MolstarInstance, formatFor } from '../molecule/loadMolstar';
 import { MolstarViewer } from '../molecule/MolstarViewer';
+import { SecondaryStructure } from '../molecule/SecondaryStructure';
 import { canOpenInNeuroglancer, neuroglancerUrl } from '../molecule/neuroglancer';
 
 function Section({ title, area, children }: { readonly title: string; readonly area?: string; readonly children: ReactNode }) {
@@ -102,6 +103,8 @@ export function MoleculePage({ id }: { readonly id: string }) {
   const { data: m, isPending, error } = useQuery(moleculeQuery(id));
   const [modelId, setModelId] = useState<number | null>(null);
   const [metadataOpen, setMetadataOpen] = useState(false);
+  // The 3D viewer's instance, for the 2D panel to follow its camera.
+  const [molstar, setMolstar] = useState<MolstarInstance | null>(null);
   // From 1250px up the data collection table sits beside the structure and maps; narrower, it moves
   // into a drawer so they get the full width.
   const wide = useMediaQuery('(min-width: 1250px)');
@@ -187,7 +190,11 @@ export function MoleculePage({ id }: { readonly id: string }) {
                   </MenuItem>
                 ))}
               </TextField>
-              <MolstarViewer format={formatFor(model.name)} url={model.url} />
+              {/* The 2D panel sits beside the 3D viewer, and under it when narrow. */}
+              <Box sx={{ display: 'grid', gap: 2, alignItems: 'start', gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' } }}>
+                <MolstarViewer format={formatFor(model.name)} onInstance={setMolstar} url={model.url} />
+                <SecondaryStructure molstar={molstar} url={model.url} />
+              </Box>
             </Stack>
           ) : (
             <Typography color="text.secondary">No atomic models found.</Typography>

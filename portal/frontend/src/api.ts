@@ -131,7 +131,7 @@ export type MoleculeDetail = Omit<MoleculeSummary, 'movies' | 'microscope'> & {
 
 export class NotFound extends Error {}
 
-async function getJson<T>(url: string): Promise<T> {
+async function checkedFetch(url: string): Promise<Response> {
   const response = await fetch(url, { credentials: 'same-origin' });
   if (response.redirected && new URL(response.url).pathname === '/login.html') {
     redirectToLogin();
@@ -143,7 +143,15 @@ async function getJson<T>(url: string): Promise<T> {
   if (!response.ok) {
     throw new Error(`${response.status} from ${url}`);
   }
-  return (await response.json()) as T;
+  return response;
+}
+
+async function getJson<T>(url: string): Promise<T> {
+  return (await (await checkedFetch(url)).json()) as T;
+}
+
+export async function getText(url: string): Promise<string> {
+  return (await checkedFetch(url)).text();
 }
 
 export const moleculesQuery = (search: MoleculeSearch = {}) =>
