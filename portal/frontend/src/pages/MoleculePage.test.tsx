@@ -4,7 +4,7 @@ import { mockFetch, renderApp } from '../test/renderApp';
 
 vi.mock('../molecule/loadMolstar', async importOriginal => ({
   ...(await importOriginal<typeof import('../molecule/loadMolstar')>()),
-  loadMolstar: async () => ({ create: async () => ({ loadStructureUrl: async () => {}, dispose: () => {} }) })
+  loadMolstar: async () => ({ create: async () => ({ loadStructureUrl: async () => {}, onCamera: () => () => {}, rotateCamera: () => {}, dispose: () => {} }) })
 }));
 
 afterEach(() => vi.unstubAllGlobals());

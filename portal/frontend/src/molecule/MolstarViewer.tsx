@@ -4,7 +4,16 @@ import { type MolstarInstance, type StructureFormat, loadMolstar } from './loadM
 
 // Interactive 3D view of one model. Adapted from ai-cryoet's MolstarViewer.tsx (branch
 // worktree-nucleosome-templates): a new Mol* instance per model, disposed on change or unmount.
-export function MolstarViewer({ url, format }: { readonly url: string; readonly format: StructureFormat }) {
+// onInstance gets the instance once its model is loaded, and null when that instance goes away.
+export function MolstarViewer({
+  url,
+  format,
+  onInstance
+}: {
+  readonly url: string;
+  readonly format: StructureFormat;
+  readonly onInstance?: (instance: MolstarInstance | null) => void;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const [failed, setFailed] = useState(false);
 
@@ -25,6 +34,9 @@ export function MolstarViewer({ url, format }: { readonly url: string; readonly 
           return;
         }
         await instance.loadStructureUrl(url, format);
+        if (!cancelled) {
+          onInstance?.(instance);
+        }
       } catch (err) {
         console.warn('Mol* viewer failed', err);
         instance?.dispose();
@@ -36,9 +48,10 @@ export function MolstarViewer({ url, format }: { readonly url: string; readonly 
     })();
     return () => {
       cancelled = true;
+      onInstance?.(null);
       instance?.dispose();
     };
-  }, [url, format]);
+  }, [url, format, onInstance]);
 
   return (
     <Box sx={{ position: 'relative', width: '100%' }}>
