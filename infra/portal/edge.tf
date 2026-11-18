@@ -82,11 +82,26 @@ data "aws_cloudfront_origin_request_policy" "all_viewer" {
   name = "Managed-AllViewer"
 }
 
+# Requested in the console and DNS-validated by Janelia IT, then imported so Terraform owns its
+# tags (ACM in us-east-1 is a CloudFront requirement):
+#   terraform import -var-file=dev.tfvars 'aws_acm_certificate.portal[0]' <certificate arn>
+resource "aws_acm_certificate" "portal" {
+  count                     = length(var.domain_names) == 0 ? 0 : 1
+  provider                  = aws.us_east_1
+  domain_name               = var.domain_names[0]
+  subject_alternative_names = slice(var.domain_names, 1, length(var.domain_names))
+  validation_method         = "DNS"
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
 resource "aws_cloudfront_distribution" "portal" {
   enabled     = true
   comment     = local.name
   price_class = "PriceClass_100"
-  aliases     = var.domain_name == "" ? [] : [var.domain_name]
+  aliases     = var.domain_names
 
   origin {
     origin_id   = "alb"
@@ -119,9 +134,9 @@ resource "aws_cloudfront_distribution" "portal" {
   }
 
   viewer_certificate {
-    cloudfront_default_certificate = var.acm_certificate_arn == ""
-    acm_certificate_arn            = var.acm_certificate_arn == "" ? null : var.acm_certificate_arn
-    ssl_support_method             = var.acm_certificate_arn == "" ? null : "sni-only"
-    minimum_protocol_version       = var.acm_certificate_arn == "" ? null : "TLSv1.2_2021"
+    cloudfront_default_certificate = length(var.domain_names) == 0
+    acm_certificate_arn            = one(aws_acm_certificate.portal[*].arn)
+    ssl_support_method             = length(var.domain_names) == 0 ? null : "sni-only"
+    minimum_protocol_version       = length(var.domain_names) == 0 ? null : "TLSv1.2_2021"
   }
 }

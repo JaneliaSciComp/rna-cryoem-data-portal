@@ -16,7 +16,6 @@ scan_schedule         = "cron(0 7 * * ? *)" # nightly, 07:00 UTC. Prod: "rate(1 
 # collection_sheet_id  = "<sheet-id>"
 # collection_sheet_gid = "<tab gid>"
 
-# Custom hostname. The ACM cert must be in us-east-1 (CloudFront requirement); DNS CNAME -> the
-# distribution's domain. Leave both empty for the *.cloudfront.net name only.
-# domain_name         = "rna-cryoem.janelia.org"
-# acm_certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/<id>"
+# Custom hostnames. Request its ACM cert in us-east-1 via the console, then import it (see
+# edge.tf); DNS CNAME -> the distribution's domain. Leave empty for the *.cloudfront.net name only.
+# domain_names = ["rna-cryoem.janelia.org", "rna-cryoem.org"]
