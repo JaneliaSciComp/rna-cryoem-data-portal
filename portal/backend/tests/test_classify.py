@@ -11,7 +11,7 @@ from rna_portal.models import Kind, Source
         ("Mol23_TrpHolo/PDB_entry/D_1000307649_model-annotate_P1.pdb", (Kind.MODEL, Source.DEPOSITED)),
         ("Mol9_gRNAde/PDB_deposit/emd_75574.map", (Kind.MAP, Source.DEPOSITED)),
         ("Mol9_gRNAde/PDB_deposit/10zt_full_validation.pdf", (Kind.REPORT, Source.DEPOSITED)),
-        ("Mol9_gRNAde/AlphaFold/fold_p20_grnade2_model_0.cif", (Kind.MODEL, Source.PREDICTED)),
+        ("Mol9_gRNAde/Predicted_Models/fold_p20_grnade2_model_0.cif", (Kind.MODEL, Source.PREDICTED)),
         ("Mol9_gRNAde/CryoEM/Maps/cryosparc_P93_J300_009_volume_map.mrc", (Kind.MAP, Source.EXPERIMENTAL)),
         ("Mol9_gRNAde/CryoEM/Maps/J300_fsc_iteration_009.png", (Kind.PLOT, Source.EXPERIMENTAL)),
         ("Mol9_gRNAde/CryoEM/Maps/cryosparc_P93_J300_json.log", (Kind.LOG, Source.EXPERIMENTAL)),
@@ -50,8 +50,8 @@ def test_classify(path, expected):
 @pytest.mark.parametrize(
     "path",
     [
-        "Mol9_gRNAde/AlphaFold/fold_p20_grnade2_full_data_0.json",
-        "Mol9_gRNAde/AlphaFold/terms_of_use.md",
+        "Mol9_gRNAde/Predicted_Models/fold_p20_grnade2_full_data_0.json",
+        "Mol9_gRNAde/Predicted_Models/terms_of_use.md",
         "Mol23_TrpHolo/CryoEM/Micrographs/P106-J90-09_18_2026-10_21_01.csv",
         "README.pdf",  # in the data root, outside any molecule folder
         "Mol9_gRNAde/CryoEM/Maps/._J300_fsc.png",  # macOS metadata file

@@ -50,7 +50,7 @@ def classify(path: str) -> tuple[Kind, Source] | None:
 
     if any(f.startswith("pdb") for f in subfolders):
         source = Source.DEPOSITED
-    elif "alphafold" in subfolders:
+    elif any(f.startswith("predicted") for f in subfolders):
         source = Source.PREDICTED
     elif "cryoem" in subfolders:
         source = Source.EXPERIMENTAL

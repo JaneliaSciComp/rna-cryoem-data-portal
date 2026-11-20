@@ -18,8 +18,8 @@ from samples import cryosparc_log, header_line
 TREE = {
     "Mol9_gRNAde/PDB_deposit/10ZT.pdb": header_line("13-FEB-26", "10ZT") + "END\n",
     "Mol9_gRNAde/PDB_deposit/emd_75574.map": "map",
-    "Mol9_gRNAde/AlphaFold/fold_p20_grnade2_model_0.cif": "data_x\n",
-    "Mol9_gRNAde/AlphaFold/terms_of_use.md": "terms",
+    "Mol9_gRNAde/Predicted_Models/fold_p20_grnade2_model_0.cif": "data_x\n",
+    "Mol9_gRNAde/Predicted_Models/terms_of_use.md": "terms",
     "Mol9_gRNAde/CryoEM/Maps/cryosparc_P93_J300_json.log": cryosparc_log(2.97),
     "Mol9_gRNAde/CryoEM/Maps/J300_fsc_iteration_009.png": "png",
     "Mol9_gRNAde/CryoEM/Micrographs/J1_raw_data_001.png": "png",
@@ -213,7 +213,7 @@ def test_thumbnail_falls_back_to_a_predicted_model(engine, root, thumbs):
 
     scan(engine, root, thumbs, render)
 
-    assert root / "Mol9_gRNAde/AlphaFold/fold_p20_grnade2_model_0.cif" in render.calls
+    assert root / "Mol9_gRNAde/Predicted_Models/fold_p20_grnade2_model_0.cif" in render.calls
 
 
 def test_warm_reads_what_the_page_loads_and_skips_missing_files(engine, root, thumbs):
@@ -222,9 +222,9 @@ def test_warm_reads_what_the_page_loads_and_skips_missing_files(engine, root, th
 
     assert warm(engine, root) == [
         "Mol23_TrpHolo/PDB_entry/D_1000307649_model-annotate_P1.pdb",
-        "Mol9_gRNAde/AlphaFold/fold_p20_grnade2_model_0.cif",
         "Mol9_gRNAde/CryoEM/Maps/J300_fsc_iteration_009.png",
         "Mol9_gRNAde/PDB_deposit/10ZT.pdb",
+        "Mol9_gRNAde/Predicted_Models/fold_p20_grnade2_model_0.cif",
         "Mol9_gRNAde/Sequence/mol9_oi.fasta",
     ]
 
