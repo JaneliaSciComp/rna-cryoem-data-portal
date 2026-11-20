@@ -33,7 +33,7 @@ def client(engine, typesense, tmp_path, monkeypatch):
                 thumbnail_path="Mol9_gRNAde.png", scanned_at=NOW,
                 files=[
                     f("Mol9_gRNAde/PDB_deposit/10ZT.pdb", "model", "deposited"),
-                    f("Mol9_gRNAde/AlphaFold/model_0.cif", "model", "predicted"),
+                    f("Mol9_gRNAde/Predicted_Models/model_0.cif", "model", "predicted"),
                     f("Mol9_gRNAde/CryoEM/Maps/a b#c%.mrc", "map", "experimental", 300_000_000),
                 ],
             ),
@@ -47,7 +47,7 @@ def client(engine, typesense, tmp_path, monkeypatch):
             Molecule(
                 id="Mol2_alpha", name="alpha", resolution_a=3.5, nomask_resolution_a=4.1, particle_count=200000,
                 scanned_at=NOW,
-                files=[f("Mol2_alpha/AlphaFold/a.cif", "model", "predicted"), f("Mol2_alpha/m/b.png", "micrograph", "other")],
+                files=[f("Mol2_alpha/Predicted_Models/a.cif", "model", "predicted"), f("Mol2_alpha/m/b.png", "micrograph", "other")],
             ),
         ])
         s.commit()

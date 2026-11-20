@@ -7,8 +7,8 @@ const file = (id: number, path: string, kind: MoleculeFile['kind'], source: Mole
 
 test('groups by kind, deposited first, then by path', () => {
   const g = groupFiles([
-    file(1, 'M/AlphaFold/model_1.cif', 'model', 'predicted'),
-    file(2, 'M/AlphaFold/model_0.cif', 'model', 'predicted'),
+    file(1, 'M/Predicted_Models/model_1.cif', 'model', 'predicted'),
+    file(2, 'M/Predicted_Models/model_0.cif', 'model', 'predicted'),
     file(3, 'M/PDB_deposit/10ZT.pdb', 'model', 'deposited'),
     file(4, 'M/CryoEM/Maps/map.mrc', 'map', 'experimental'),
     file(5, 'M/PDB_deposit/emd.map', 'map', 'deposited'),
