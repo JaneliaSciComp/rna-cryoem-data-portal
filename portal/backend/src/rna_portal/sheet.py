@@ -1,6 +1,6 @@
 """The team's data collection sheet (one tab of a Google Sheet): one row
 per grid collected, with the microscope settings. A row belongs to the molecule whose folder name
-is its Grid Name; rows for grids that aren't on the portal are kept but match nothing.
+is its RNA Portal Name; rows for grids that aren't on the portal are kept but match nothing.
 """
 import csv
 import io
@@ -16,7 +16,7 @@ from rna_portal.models import Molecule, SheetCollection
 # The scope the Drive mount's rclone already uses; the export URL needs no Sheets API.
 SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
 # The column that names the molecule folder. Its row is the header: rows above it are a title.
-NAME_COLUMN = "Grid Name"
+NAME_COLUMN = "RNA Portal Name"
 
 
 def fetch_csv(sheet_id: str, gid: str, key_json: str) -> str:

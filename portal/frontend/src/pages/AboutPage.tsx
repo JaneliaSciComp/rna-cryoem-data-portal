@@ -159,7 +159,7 @@ export function AboutPage() {
       <Section title="Data collection and processing metadata">
         <Typography>
           Read from the team’s data collection sheet, one row per grid. A row belongs to the molecule whose folder name
-          is in its {c('Grid Name')} column. A molecule with more than one row shows none of them until the extras are
+          is in its {c('RNA Portal Name')} column. A molecule with more than one row shows none of them until the extras are
           removed.
         </Typography>
         <FactTable head={['Shown as', 'Sheet column', 'Note']} rows={SHEET} />
