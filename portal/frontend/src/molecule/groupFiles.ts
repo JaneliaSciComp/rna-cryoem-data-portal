@@ -2,7 +2,7 @@ import type { Kind, MoleculeFile, Source } from '../api';
 
 export const SOURCE_LABEL: Record<Source, string> = {
   deposited: 'Deposited',
-  predicted: 'AlphaFold',
+  predicted: 'Predicted',
   experimental: 'cryoSPARC',
   other: 'Other'
 };

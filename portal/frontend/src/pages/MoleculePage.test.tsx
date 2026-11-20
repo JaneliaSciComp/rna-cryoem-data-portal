@@ -19,7 +19,7 @@ const MOL9 = {
   thumbnail_url: null, scanned_at: '2026-10-01T12:00:00Z',
   collections: [{ Date: '2025/01/02', Microscope: 'Janelia Krios4', Movies: '12345', 'Energy Slit': '6' }],
   files: [
-    f(1, 'Mol9_gRNAde/AlphaFold/model_0.cif', 'model', 'predicted'),
+    f(1, 'Mol9_gRNAde/Predicted_Models/model_0.cif', 'model', 'predicted'),
     f(2, 'Mol9_gRNAde/PDB_deposit/10ZT.pdb', 'model', 'deposited'),
     f(3, 'Mol9_gRNAde/CryoEM/Maps/volume_map.mrc', 'map', 'experimental', 296_400_000),
     f(4, 'Mol9_gRNAde/CryoEM/Maps/J300_fsc.png', 'plot', 'experimental'),
