@@ -300,7 +300,9 @@ scripts/user_access.sh grant someone@lab.edu data-portal    # existing user, e.g
 An invite whose first `--apps` entry is `data-portal` gets the portal's own email, which links to
 this portal's `/login.html`. Any other first app gets the pool's default RNAnix email. The link
 comes from `invite_sites` in `rna_auth_aws_daslab`'s `terraform/auth/invite_sites.auto.tfvars`;
-update it there if `terraform output -raw portal_url` changes.
+it should name the portal's custom hostname (`rna-cryoem.org`, one of `domain_names` in
+`dev.tfvars`), not the CloudFront address that `terraform output -raw portal_url` prints. Update
+it there if that hostname changes.
 
 ## Data source
 
