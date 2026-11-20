@@ -29,7 +29,10 @@ const circleYs = () => [...diagram().querySelectorAll('circle')].map(el => el.ge
 
 test('shows the sequence and a diagram of the model', async () => {
   renderPanel(pdb(HAIRPIN));
+  // A loader stands in until the model file is read.
+  expect(screen.getByRole('progressbar', { name: 'Loading 2D view' })).toBeInTheDocument();
   expect(await screen.findByLabelText('Sequence')).toHaveTextContent('GGAAAACC');
+  expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
   expect(diagram().querySelectorAll('circle')).toHaveLength(8);
   expect(fetch).toHaveBeenCalledWith('/api/files/2', expect.anything());
 });

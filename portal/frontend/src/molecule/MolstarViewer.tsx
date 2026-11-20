@@ -1,4 +1,4 @@
-import { Alert, Box } from '@mui/material';
+import { Alert, Box, CircularProgress } from '@mui/material';
 import { useEffect, useRef, useState } from 'react';
 import { type MolstarInstance, type StructureFormat, loadMolstar } from './loadMolstar';
 
@@ -16,9 +16,12 @@ export function MolstarViewer({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [failed, setFailed] = useState(false);
+  // Mol* itself, then the model file: the box is blank for seconds on a first visit.
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setFailed(false);
+    setLoading(true);
     let instance: MolstarInstance | undefined;
     let cancelled = false;
     (async () => {
@@ -35,6 +38,7 @@ export function MolstarViewer({
         }
         await instance.loadStructureUrl(url, format);
         if (!cancelled) {
+          setLoading(false);
           onInstance?.(instance);
         }
       } catch (err) {
@@ -42,6 +46,7 @@ export function MolstarViewer({
         instance?.dispose();
         instance = undefined;
         if (!cancelled) {
+          setLoading(false);
           setFailed(true);
         }
       }
@@ -57,6 +62,11 @@ export function MolstarViewer({
     <Box sx={{ position: 'relative', width: '100%' }}>
       {/* Stays mounted while hidden, so ref.current exists when a new url is tried. */}
       <Box ref={ref} sx={{ position: 'relative', width: '100%', aspectRatio: '1 / 1', maxHeight: 600, display: failed ? 'none' : 'block' }} />
+      {loading ? (
+        <Box sx={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center' }}>
+          <CircularProgress aria-label="Loading 3D view" />
+        </Box>
+      ) : null}
       {failed ? <Alert severity="warning">Couldn't load this model in the 3D viewer.</Alert> : null}
     </Box>
   );

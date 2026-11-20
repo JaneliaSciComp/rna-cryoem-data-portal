@@ -22,10 +22,23 @@ test('loads the structure in its format', async () => {
   expect(instance.dispose).toHaveBeenCalled();
 });
 
+test('shows a loader until the structure is loaded', async () => {
+  let finish = () => {};
+  const loaded = new Promise<void>(resolve => (finish = resolve));
+  vi.mocked(loadMolstar).mockResolvedValue({
+    create: async () => ({ loadStructureUrl: () => loaded, onCamera: () => () => {}, rotateCamera: () => {}, dispose: vi.fn() })
+  });
+  render(<MolstarViewer format="pdb" url="/api/files/1" />);
+  expect(screen.getByRole('progressbar', { name: 'Loading 3D view' })).toBeInTheDocument();
+  finish();
+  await waitFor(() => expect(screen.queryByRole('progressbar')).not.toBeInTheDocument());
+});
+
 test('shows an error when the structure fails to load', async () => {
   vi.mocked(loadMolstar).mockResolvedValue({
     create: async () => ({ loadStructureUrl: async () => Promise.reject(new Error('bad file')), onCamera: () => () => {}, rotateCamera: () => {}, dispose: vi.fn() })
   });
   render(<MolstarViewer format="pdb" url="/api/files/1" />);
   expect(await screen.findByText(/Couldn't load this model/)).toBeInTheDocument();
+  expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
 });
