@@ -32,7 +32,7 @@ The data layout is still actively evolving and the rules for discovering folders
 <data root>/
   Mol9_gRNAde/            # one molecule; the name drops the Mol<N>_ prefix
     PDB.../10ZT.pdb       # .pdb/.cif = model; a pdb* folder = deposited
-    AlphaFold/...cif      # predicted
+    Predicted.../...cif   # a predicted* folder = predicted
     CryoEM/...mrc         # .mrc/.map = map; cryoem = experimental
     .../micrographs/*.png # micrograph (other .png = plot)
     ...*.pdf, *.log       # report, cryoSPARC JSON log (resolution)

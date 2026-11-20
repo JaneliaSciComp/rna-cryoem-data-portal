@@ -73,7 +73,7 @@ const FILES: Fact[] = [
 
 const SOURCES: Fact[] = [
   ['Deposited', <>a folder whose name starts with {c('PDB')}</>, 'Also where the PDB ID is read from.'],
-  ['Predicted', <>an {c('AlphaFold')} folder</>, ''],
+  ['Predicted', <>a folder whose name starts with {c('Predicted')}</>, ''],
   ['Experimental', <>a {c('CryoEM')} folder</>, ''],
   ['Other', 'anywhere else in the molecule folder', '']
 ];
