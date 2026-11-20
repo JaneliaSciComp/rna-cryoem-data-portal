@@ -9,6 +9,7 @@ import { type ReactNode, useEffect, useState } from 'react';
 import { trackEvent } from '../analytics';
 import { type MoleculeDetail, NotFound, moleculeQuery } from '../api';
 import { formatBytes, formatCount, formatResolution } from '../format';
+import { FastaSequence } from '../molecule/FastaSequence';
 import { Gallery } from '../molecule/Gallery';
 import { MetadataDrawer } from '../molecule/MetadataDrawer';
 import { type MetadataRow, MetadataTable } from '../molecule/MetadataTable';
@@ -181,24 +182,30 @@ export function MoleculePage({ id }: { readonly id: string }) {
         }}
       >
         <Section area="structure" title="Structure">
-          {model ? (
-            <Stack spacing={2}>
-              <TextField label="Model" onChange={e => setModelId(Number(e.target.value))} select size="small" value={model.id}>
-                {g.models.map(f => (
-                  <MenuItem key={f.id} value={f.id}>
-                    {SOURCE_LABEL[f.source]}: {f.name}
-                  </MenuItem>
-                ))}
-              </TextField>
-              {/* The 2D panel sits beside the 3D viewer, and under it when narrow. */}
-              <Box sx={{ display: 'grid', gap: 2, alignItems: 'start', gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' } }}>
-                <MolstarViewer format={formatFor(model.name)} onInstance={setMolstar} url={model.url} />
-                <SecondaryStructure molstar={molstar} url={model.url} />
-              </Box>
-            </Stack>
-          ) : (
-            <Typography color="text.secondary">No atomic models found.</Typography>
-          )}
+          <Stack spacing={2}>
+            {model ? (
+              <Stack spacing={2}>
+                <TextField label="Model" onChange={e => setModelId(Number(e.target.value))} select size="small" value={model.id}>
+                  {g.models.map(f => (
+                    <MenuItem key={f.id} value={f.id}>
+                      {SOURCE_LABEL[f.source]}: {f.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+                {/* The 2D panel sits beside the 3D viewer, and under it when narrow. */}
+                <Box sx={{ display: 'grid', gap: 2, alignItems: 'start', gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' } }}>
+                  <MolstarViewer format={formatFor(model.name)} onInstance={setMolstar} url={model.url} />
+                  <SecondaryStructure molstar={molstar} url={model.url} />
+                </Box>
+              </Stack>
+            ) : (
+              <Typography color="text.secondary">No atomic models found.</Typography>
+            )}
+            {/* The designed sequence, which can include residues the model above leaves out. */}
+            {g.sequences.map(f => (
+              <FastaSequence file={f} key={f.id} />
+            ))}
+          </Stack>
         </Section>
 
         {wide ? (

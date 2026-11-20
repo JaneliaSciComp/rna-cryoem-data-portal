@@ -53,6 +53,7 @@ const FILES: Fact[] = [
   ['Micrograph', <>{c('.png')} in a {c('Micrographs')} folder</>, 'Shown in the gallery.'],
   ['Plot', <>any other {c('.png')}</>, 'Shown in the gallery.'],
   ['Report', c('.pdf'), 'Listed for download.'],
+  ['Sequence', <>{c('.fasta')}, {c('.fa')}</>, 'Shown as the full sequence, under the structure.'],
   ['cryoSPARC log', <>{c('.log')}, or {c('cryosparc_*.json')}</>, 'Read for the processing facts below.']
 ];
 

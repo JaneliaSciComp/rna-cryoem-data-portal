@@ -21,7 +21,8 @@ export function mockFetch(routes: Record<string, unknown>) {
   const fetchMock = vi.fn(async (url: string) => {
     const key = url in routes ? url : url.split('?')[0];
     return key in routes
-      ? new Response(JSON.stringify(routes[key]), { status: 200, headers: { 'Content-Type': 'application/json' } })
+      ? // A string is a text file's body; anything else is JSON.
+        new Response(typeof routes[key] === 'string' ? routes[key] : JSON.stringify(routes[key]), { status: 200, headers: { 'Content-Type': 'application/json' } })
       : new Response('', { status: 404 });
   });
   vi.stubGlobal('fetch', fetchMock);

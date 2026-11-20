@@ -83,6 +83,34 @@ test('shows a message when there are no models', async () => {
   expect(screen.getByText('Not in the data collection sheet.')).toBeInTheDocument();
 });
 
+test('shows the full sequence from a FASTA file, with its length in the heading', async () => {
+  mockFetch({
+    '/api/molecules/Mol9_gRNAde': { ...MOL9, files: [...MOL9.files, f(7, 'Mol9_gRNAde/Sequence/mol9_oi.fasta', 'sequence', 'other')] },
+    '/api/files/7': '>mol9\nGGAC\nGUUU\n'
+  });
+  renderApp('/molecules/Mol9_gRNAde');
+  expect(await screen.findByText('GGACGUUU')).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: 'Full sequence (FASTA) · 8 nt' })).toBeInTheDocument();
+  // The record's header line isn't shown.
+  expect(screen.queryByText(/mol9/)).not.toBeInTheDocument();
+});
+
+test('says when a FASTA file holds no sequence', async () => {
+  mockFetch({
+    '/api/molecules/Mol9_gRNAde': { ...MOL9, files: [...MOL9.files, f(7, 'Mol9_gRNAde/Sequence/mol9_oi.fasta', 'sequence', 'other')] },
+    '/api/files/7': '>mol9\n'
+  });
+  renderApp('/molecules/Mol9_gRNAde');
+  expect(await screen.findByText('No sequence in mol9_oi.fasta.')).toBeInTheDocument();
+});
+
+test('shows no sequence block without a FASTA file', async () => {
+  mockFetch({ '/api/molecules/Mol9_gRNAde': MOL9 });
+  renderApp('/molecules/Mol9_gRNAde');
+  await screen.findByRole('heading', { name: 'gRNAde' });
+  expect(screen.queryByRole('heading', { name: /Full sequence/ })).not.toBeInTheDocument();
+});
+
 test('shows the data collection table on the page when wide', async () => {
   vi.stubGlobal('matchMedia', (query: string) => ({ matches: true, media: query, addEventListener: () => {}, removeEventListener: () => {} }));
   mockFetch({ '/api/molecules/Mol9_gRNAde': MOL9 });

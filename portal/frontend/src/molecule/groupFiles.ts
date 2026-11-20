@@ -14,5 +14,5 @@ export function groupFiles(files: MoleculeFile[]) {
     files
       .filter(f => f.kind === kind)
       .sort((a, b) => SOURCE_ORDER.indexOf(a.source) - SOURCE_ORDER.indexOf(b.source) || a.path.localeCompare(b.path));
-  return { models: of('model'), maps: of('map'), plots: of('plot'), micrographs: of('micrograph'), reports: of('report') };
+  return { models: of('model'), maps: of('map'), plots: of('plot'), micrographs: of('micrograph'), reports: of('report'), sequences: of('sequence') };
 }
