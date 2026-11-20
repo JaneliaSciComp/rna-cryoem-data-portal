@@ -92,13 +92,14 @@ test('pages through the molecules', async () => {
 
 test('searches and filters, showing facet counts', async () => {
   const fetchMock = mockFetch({
-    '/api/molecules': page([MOL23, MOL9], 2, { kinds: { plot: 1, micrograph: 1 } }),
+    '/api/molecules': page([MOL23, MOL9], 2, { kinds: { plot: 1, micrograph: 1, sequence: 2 } }),
     '/api/molecules?q=holo&page=1&per_page=10': page([]),
     '/api/molecules?q=holo&kind=plot&page=1&per_page=10': page([])
   });
   const router = renderApp('/');
   await screen.findByRole('link', { name: 'gRNAde' });
   expect(screen.getByRole('checkbox', { name: 'Plots (1)' })).not.toBeChecked();
+  expect(screen.getByRole('checkbox', { name: 'Sequences (2)' })).not.toBeChecked();
 
   await userEvent.type(screen.getByRole('searchbox', { name: 'Search' }), 'holo');
   expect(await screen.findByText('No molecules match these filters.')).toBeInTheDocument();

@@ -57,3 +57,7 @@ test('redirects to login when the session expired', async () => {
   await expect(run()).rejects.toThrow('signed out');
   expect(redirectToLogin).toHaveBeenCalled();
 });
+
+test('keeps kind=sequence from a link, and drops kind=model', () => {
+  expect(parseMoleculeSearch({ kind: ['sequence', 'model'] }).kind).toEqual(['sequence']);
+});
