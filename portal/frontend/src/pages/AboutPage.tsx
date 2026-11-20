@@ -50,8 +50,22 @@ const c = (s: string) => (
 const FILES: Fact[] = [
   ['Model', <>{c('.pdb')}, {c('.cif')}</>, 'Shown in the 3D viewer and the file list.'],
   ['Map', <>{c('.mrc')}, {c('.map')}</>, 'Listed for download and Neuroglancer.'],
-  ['Micrograph', <>{c('.png')} in a {c('Micrographs')} folder</>, 'Shown in the gallery.'],
-  ['Plot', <>any other {c('.png')}</>, 'Shown in the gallery.'],
+  [
+    'Micrograph',
+    <>
+      {c('.png')} in a {c('Micrographs')} folder, or directly in {c('CryoEM')} with no iteration
+      number in its name
+    </>,
+    'Shown in the gallery.'
+  ],
+  [
+    'Plot',
+    <>
+      any other {c('.png')}. Directly in {c('CryoEM')}, a name with {c('iteration_NNN')}, ending
+      in {c('_NNN')}, or with {c('input_mask')}
+    </>,
+    'Shown in the gallery.'
+  ],
   ['Report', c('.pdf'), 'Listed for download.'],
   ['Sequence', <>{c('.fasta')}, {c('.fa')}</>, 'Shown as the full sequence, under the structure.'],
   ['cryoSPARC log', <>{c('.log')}, or {c('cryosparc_*.json')}</>, 'Read for the processing facts below.']
