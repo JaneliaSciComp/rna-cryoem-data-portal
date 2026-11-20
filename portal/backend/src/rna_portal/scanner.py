@@ -152,7 +152,7 @@ def _thumbnail(root: Path, thumbnails: Path, folder: str, found: Found, render: 
 
 
 # What the molecule page loads. Maps are left out: they're big, and rclone's cache is capped.
-WARM_KINDS = (Kind.MODEL, Kind.PLOT, Kind.MICROGRAPH)
+WARM_KINDS = (Kind.MODEL, Kind.PLOT, Kind.MICROGRAPH, Kind.SEQUENCE)
 
 
 def warm(engine: Engine, root: Path) -> list[str]:

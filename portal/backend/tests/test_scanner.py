@@ -23,6 +23,7 @@ TREE = {
     "Mol9_gRNAde/CryoEM/Maps/cryosparc_P93_J300_json.log": cryosparc_log(2.97),
     "Mol9_gRNAde/CryoEM/Maps/J300_fsc_iteration_009.png": "png",
     "Mol9_gRNAde/CryoEM/Micrographs/J1_raw_data_001.png": "png",
+    "Mol9_gRNAde/Sequence/mol9_oi.fasta": ">mol9\nGGAC\n",
     "Mol23_TrpHolo/PDB_entry/D_1000307649_model-annotate_P1.pdb": header_line("29-APR-26", "13CQ"),
     "Mol23_TrpHolo/CryoEM/Maps/cryosparc_P106_J77_json.log": cryosparc_log(2.77),
 }
@@ -87,6 +88,7 @@ def test_first_scan_catalogs_molecules(engine, root, thumbs):
         ("cryosparc_P93_J300_json.log", "log", "experimental"),
         ("J300_fsc_iteration_009.png", "plot", "experimental"),
         ("J1_raw_data_001.png", "micrograph", "experimental"),
+        ("mol9_oi.fasta", "sequence", "other"),
     }
     assert root / "Mol9_gRNAde/PDB_deposit/10ZT.pdb" in render.calls  # deposited model first
     assert molecule(engine, "Mol23_TrpHolo").pdb_id == "13CQ"
@@ -223,6 +225,7 @@ def test_warm_reads_what_the_page_loads_and_skips_missing_files(engine, root, th
         "Mol9_gRNAde/AlphaFold/fold_p20_grnade2_model_0.cif",
         "Mol9_gRNAde/CryoEM/Maps/J300_fsc_iteration_009.png",
         "Mol9_gRNAde/PDB_deposit/10ZT.pdb",
+        "Mol9_gRNAde/Sequence/mol9_oi.fasta",
     ]
 
 

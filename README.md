@@ -36,6 +36,7 @@ The data layout is still actively evolving and the rules for discovering folders
     CryoEM/...mrc         # .mrc/.map = map; cryoem = experimental
     .../micrographs/*.png # micrograph (other .png = plot)
     ...*.pdf, *.log       # report, cryoSPARC JSON log (resolution)
+    ...*.fasta, *.fa      # sequence
 ```
 
 ## Local development

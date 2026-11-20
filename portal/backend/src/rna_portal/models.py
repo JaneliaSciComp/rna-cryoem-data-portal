@@ -13,6 +13,7 @@ class Kind(StrEnum):
     MICROGRAPH = "micrograph"
     REPORT = "report"
     LOG = "log"
+    SEQUENCE = "sequence"
 
 
 class Source(StrEnum):

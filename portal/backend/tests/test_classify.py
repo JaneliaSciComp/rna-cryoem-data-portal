@@ -18,6 +18,8 @@ from rna_portal.models import Kind, Source
         ("Mol105/CryoEM/Maps/cryosparc_P58_J291.json", (Kind.LOG, Source.EXPERIMENTAL)),
         ("Mol9_gRNAde/CryoEM/Micrographs/J1_raw_data_001.png", (Kind.MICROGRAPH, Source.EXPERIMENTAL)),
         ("Mol23_TrpHolo/CryoEM/Micrographs/J90_defocus_range.png", (Kind.MICROGRAPH, Source.EXPERIMENTAL)),
+        ("Mol9_gRNAde/Sequence/mol9_oi.fasta", (Kind.SEQUENCE, Source.OTHER)),
+        ("Mol9_gRNAde/Sequence/mol9.fa", (Kind.SEQUENCE, Source.OTHER)),
         # Folder names and extensions are case-insensitive.
         ("Mol9_gRNAde/cryoem/micrographs/x.PNG", (Kind.MICROGRAPH, Source.EXPERIMENTAL)),
         # A file in a folder the rules don't know is still cataloged, as "other".
