@@ -6,7 +6,7 @@ from rna_portal.sheet import collections
 CSV = """\
 DATA COLLECTION PARAMETERS FOR THE RNA PORTAL,,,,
 ,,,,
-Index,Date,Grid Name,Pixel Size (Å),Movies
+Index,Date,RNA Portal Name,Pixel Size (Å),Movies
 1,2025/01/01,Grid1 b1g1,0.7252,
 2,2025/01/02,Mol9_gRNAde,0.7336,12345
 3,2025/01/03,Mol9_gRNAde,0.7252,12000
@@ -26,7 +26,7 @@ def test_collections_groups_rows_by_grid_name():
 
 @pytest.mark.parametrize("text", [
     "", "Index,Date,Name\n1,2025/01/01,Mol9_gRNAde\n",
-    "Grid Name,Movies,Movies\nMol9_gRNAde,1,2\n",  # a duplicate column would silently win
+    "RNA Portal Name,Movies,Movies\nMol9_gRNAde,1,2\n",  # a duplicate column would silently win
 ])
 def test_collections_without_a_usable_header_row_is_an_error(text):
     with pytest.raises(ValueError):
