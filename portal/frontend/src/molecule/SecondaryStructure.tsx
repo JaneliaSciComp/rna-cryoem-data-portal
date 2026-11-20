@@ -1,4 +1,4 @@
-import { Box, Button, Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material';
+import { Box, Button, CircularProgress, Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { type PointerEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { getText } from '../api';
@@ -82,7 +82,12 @@ export function SecondaryStructure({ url, molstar }: { readonly url: string; rea
     return <Typography color="text.secondary">Couldn't read this model's sequence.</Typography>;
   }
   if (!ss) {
-    return null;
+    // The 3D viewer's shape, so the two loaders sit level.
+    return (
+      <Box sx={{ display: 'grid', placeItems: 'center', aspectRatio: '1 / 1', maxHeight: 600 }}>
+        <CircularProgress aria-label="Loading 2D view" />
+      </Box>
+    );
   }
   if (ss.n === 0) {
     return <Typography color="text.secondary">No RNA chain found in this model.</Typography>;

@@ -29,6 +29,8 @@ _MEDIA_TYPES = {
     ".png": "image/png",
     ".pdf": "application/pdf",
     ".log": "text/plain; charset=utf-8",
+    ".fasta": "text/plain; charset=utf-8",
+    ".fa": "text/plain; charset=utf-8",
 }
 
 

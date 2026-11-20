@@ -15,11 +15,13 @@ test('groups by kind, deposited first, then by path', () => {
     file(6, 'M/CryoEM/Maps/fsc.png', 'plot', 'experimental'),
     file(7, 'M/CryoEM/Micrographs/m.png', 'micrograph', 'experimental'),
     file(8, 'M/PDB_deposit/report.pdf', 'report', 'deposited'),
-    file(9, 'M/CryoEM/Maps/job.log', 'log', 'experimental')
+    file(9, 'M/CryoEM/Maps/job.log', 'log', 'experimental'),
+    file(10, 'M/Sequence/m.fasta', 'sequence', 'other')
   ]);
   expect(g.models.map(f => f.id)).toEqual([3, 2, 1]);
   expect(g.maps.map(f => f.id)).toEqual([5, 4]);
   expect(g.plots.map(f => f.id)).toEqual([6]);
   expect(g.micrographs.map(f => f.id)).toEqual([7]);
   expect(g.reports.map(f => f.id)).toEqual([8]);
+  expect(g.sequences.map(f => f.id)).toEqual([10]);
 });

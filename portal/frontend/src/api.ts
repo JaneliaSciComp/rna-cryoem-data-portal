@@ -1,7 +1,7 @@
 import { keepPreviousData, queryOptions } from '@tanstack/react-query';
 import { redirectToLogin } from './session';
 
-export type Kind = 'model' | 'map' | 'plot' | 'micrograph' | 'report' | 'log';
+export type Kind = 'model' | 'map' | 'plot' | 'micrograph' | 'report' | 'log' | 'sequence';
 export type Source = 'deposited' | 'predicted' | 'experimental' | 'other';
 
 export type MoleculeSummary = {
@@ -56,7 +56,7 @@ export type MoleculeSearch = {
 
 // The kinds the list filters by. Models and maps aren't filters, so a link's kind=model or kind=map
 // is dropped rather than narrowing the list with no chip to show it.
-const KINDS: readonly Kind[] = ['plot', 'micrograph', 'report', 'log'];
+const KINDS: readonly Kind[] = ['plot', 'micrograph', 'report', 'log', 'sequence'];
 const SORT_KEYS: readonly SortKey[] = [
   'name',
   'pdb_id',

@@ -46,7 +46,8 @@ const KINDS: [Kind, string][] = [
   ['micrograph', 'Micrographs'],
   ['plot', 'Plots'],
   ['report', 'Reports'],
-  ['log', 'Logs']
+  ['log', 'Logs'],
+  ['sequence', 'Sequences']
 ];
 const PER_PAGE = 10;
 // The filter sidebar and the table; one column on small screens, where the sidebar is a drawer.

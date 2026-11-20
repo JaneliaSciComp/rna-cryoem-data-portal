@@ -15,6 +15,8 @@ _KIND_BY_EXTENSION = {
     ".map": Kind.MAP,
     ".pdf": Kind.REPORT,
     ".log": Kind.LOG,
+    ".fasta": Kind.SEQUENCE,
+    ".fa": Kind.SEQUENCE,
 }
 
 
