@@ -20,6 +20,20 @@ from rna_portal.models import Kind, Source
         ("Mol23_TrpHolo/CryoEM/Micrographs/J90_defocus_range.png", (Kind.MICROGRAPH, Source.EXPERIMENTAL)),
         ("Mol9_gRNAde/Sequence/mol9_oi.fasta", (Kind.SEQUENCE, Source.OTHER)),
         ("Mol9_gRNAde/Sequence/mol9.fa", (Kind.SEQUENCE, Source.OTHER)),
+        # Pooled into CryoEM/: the file name decides. Plots carry an iteration number.
+        ("Mol9_gRNAde/CryoEM/J300_fsc_iteration_009.png", (Kind.PLOT, Source.EXPERIMENTAL)),
+        (
+            "Mol9_gRNAde/CryoEM/J300_fsc_iteration_009_after_fsc_mask_auto_tightening.png",
+            (Kind.PLOT, Source.EXPERIMENTAL),
+        ),
+        ("Mol9_gRNAde/CryoEM/J300_per_particle_scale_factors_009.png", (Kind.PLOT, Source.EXPERIMENTAL)),
+        ("Mol30_HisHolo/CryoEM/J12_input_mask_real_space_slices.png", (Kind.PLOT, Source.EXPERIMENTAL)),
+        ("Mol9_gRNAde/CryoEM/J90_defocus_range.png", (Kind.MICROGRAPH, Source.EXPERIMENTAL)),
+        ("Mol9_gRNAde/CryoEM/J29_denoised_output_micrograph1.png", (Kind.MICROGRAPH, Source.EXPERIMENTAL)),
+        (
+            "Mol24_tC19zApo/CryoEM/J10_raw_data_j10imported011206002498941007152_mol24_b1g4_100_002_jan05_165918_x0y0_1eer.png",
+            (Kind.MICROGRAPH, Source.EXPERIMENTAL),
+        ),
         # Folder names and extensions are case-insensitive.
         ("Mol9_gRNAde/cryoem/micrographs/x.PNG", (Kind.MICROGRAPH, Source.EXPERIMENTAL)),
         # A file in a folder the rules don't know is still cataloged, as "other".
